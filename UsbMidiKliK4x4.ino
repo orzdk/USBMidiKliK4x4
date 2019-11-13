@@ -536,7 +536,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) {
 
   uint8_t src;
   uint8_t dest = 0 ;
-  uint8_t msk ;
+  uint16_t msk ;
   uint8_t i;
   uint8_t c;
   uint8_t *buff2 = buff;
@@ -593,10 +593,11 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) {
      case 0x0F020000: // Cable
      case 0x0F020100: // Serial
          src  = (fnId & 0x0000FF00) >> 8;
+         if (src > 1  ) return 0;
          *(++buff2) = 0X02;
          *(++buff2) = src;
          *(++buff2) = port;
-         if (dest) {
+         if (src) {
             *(++buff2) = EEPROM_Params.midiRoutingRulesSerial[port].filterMsk;
          }
          else {
@@ -611,27 +612,29 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) {
      case 0x0F010001: // Cable to Serial
      case 0x0F010100: // Serial to Cable
      case 0x0F010101: // Serial to Serial
-          src  = (fnId & 0x0000FF00) >> 8;
-          dest = (fnId & 0x000000FF) ;
-          *(++buff2) = 0X01;
-          *(++buff2) = src;
-          *(++buff2) = port;
-          *(++buff2) = dest;
-          msk = 0;
-          if (src && dest) msk = EEPROM_Params.midiRoutingRulesSerial[port].jackOutTargetsMsk;
-          else if (src && !dest) msk = EEPROM_Params.midiRoutingRulesSerial[port].cableInTargetsMsk;
-          else if (!src && dest) msk = EEPROM_Params.midiRoutingRulesCable[port].jackOutTargetsMsk;
-          else if (!src && !dest) msk = EEPROM_Params.midiRoutingRulesCable[port].cableInTargetsMsk;
-          else return 0;
-          c = 0;
-          for ( i = 0 ; i != 16  ; i++) {
-              if ( msk & ( 1 << i) ) {
-                *(++buff2) = i;
-                c++;
-              }
-          }
-          if (c == 0 ) return 0;
-          break;
+     src  = (fnId & 0x0000FF00) >> 8;
+     dest = (fnId & 0x000000FF) ;
+     if (src > 1 || dest > 1 ) return 0;
+     *(++buff2) = 0X01;
+     *(++buff2) = src;
+     *(++buff2) = port;
+     *(++buff2) = dest;
+
+     if (src ) {
+       msk = dest ? EEPROM_Params.midiRoutingRulesSerial[port].jackOutTargetsMsk : EEPROM_Params.midiRoutingRulesSerial[port].cableInTargetsMsk;
+     } else {
+       msk = dest ? EEPROM_Params.midiRoutingRulesCable[port].jackOutTargetsMsk : EEPROM_Params.midiRoutingRulesCable[port].cableInTargetsMsk;
+     } ;
+
+     c = 0;
+     for ( i = 0 ; i != 16  ; i++) {
+         if ( msk & ( 1 << i) ) {
+           *(++buff2) = i;
+           c++;
+         }
+     }
+     if (c == 0 ) return 0;
+     break;
   }
   *(++buff2) = 0xF7;
   return buff2-buff+1;
@@ -772,7 +775,6 @@ void SysExSendMsgPacket( uint8_t buff[],uint16_t sz) {
 ///////////////////////////////////////////////////////////////////////////////
 void SysExInternalProcess(uint8_t source)
 {
-
   uint8_t msgLen = sysExInternalBuffer[0];
   uint8_t cmdId  = sysExInternalBuffer[1];
 
