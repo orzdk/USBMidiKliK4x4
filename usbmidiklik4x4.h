@@ -135,17 +135,6 @@ typedef union {
   uint8_t packet[5];
 } __packed masterMidiPacket_t;
 
-// Midi Transformer Structures
-
-typedef union  {
-    uint32_t i;
-    uint8_t  tbyte[4];
-} __packed midiTransformer_t;
-
-typedef struct {
-      midiTransformer_t transformers[3];
-} __packed channelTransformer_t;
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // BUS MODE

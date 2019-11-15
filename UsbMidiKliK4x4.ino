@@ -53,6 +53,7 @@ __ __| |           |  /_) |     ___|             |           |
 #include "usbmidiklik4x4.h"
 #include "usb_midi.h"
 #include "ringbuffer.h"
+#include <libMMM.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
@@ -414,12 +415,22 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       cableInTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].cableInTargetsMsk;
       serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
+      
+      // Apply serial transformations
+      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
+        (transformerCommands[L3M_SERIAL_CMD].fnFn)(pk, L3M_SERIAL_PARMS);
+      }
     }
   }
   else if (source == FROM_USB ) {
       cableInTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].cableInTargetsMsk;
       serialOutTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
+
+      // Apply cable transformations
+      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
+        (transformerCommands[L3M_CABLE_CMD].fnFn)(pk, L3M_CABLE_PARMS);
+      }
   }
 
   else return; // Error.
@@ -493,21 +504,32 @@ void ResetMidiRoutingRules(uint8_t mode)
 
 	if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_MIDIUSB) {
 
-	  for ( uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {
-
+	  for ( uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {  
+    
 			// Cables
 	    EEPROM_Params.midiRoutingRulesCable[i].filterMsk = midiXparser::allMsgTypeMsk;
 	    EEPROM_Params.midiRoutingRulesCable[i].cableInTargetsMsk = 0 ;
 	    EEPROM_Params.midiRoutingRulesCable[i].jackOutTargetsMsk = 1 << i ;
+     
+      // Cable transformations
+      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
+        EEPROM_Params.cableTransformers[i].transformers[t].i = 0;            
+      }
 		}
 
 		for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
-
-			// Jack serial
+			// Jack serial routing & filter
 	    EEPROM_Params.midiRoutingRulesSerial[i].filterMsk = midiXparser::allMsgTypeMsk;
-	    EEPROM_Params.midiRoutingRulesSerial[i].cableInTargetsMsk = 1 << i ;
-	    EEPROM_Params.midiRoutingRulesSerial[i].jackOutTargetsMsk = 0  ;
+	    EEPROM_Params.midiRoutingRulesSerial[i].cableInTargetsMsk = 1 << i;
+	    EEPROM_Params.midiRoutingRulesSerial[i].jackOutTargetsMsk = 0;
+      
+      // Jack serial transformations
+      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
+        EEPROM_Params.serialTransformers[i].transformers[t].i = 0;
+      }
+
 	  }
+
 	}
 
 	if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_INTELLITHRU) {
@@ -589,26 +611,26 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) {
           break;
 
 
-     // Function 0F - USB/Serial Midi midi transformerts
-     // 02 Midi filter
+     // Function 0F - USB/Serial Midi routing rules
+     // 03 Transformers
      case 0x0F030000: // Cable
      case 0x0F030100: // Serial
          src  = (fnId & 0x0000FF00) >> 8;
-         if (src > 1  ) return 0;
-         *(++buff2) = 0X02;
+         if (src > 1) return 0;
+         *(++buff2) = 0X03;
          *(++buff2) = src;
          *(++buff2) = port;
          if (src) {
-            for (i=0;i<3;i++){
-              for (int ii=0;ii<4;ii++){
-                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[i].tbyte[ii];
+            for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
+              for (int b=0;b<4;b++){
+                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tByte[b];
               }
             }
          }
          else {
-            for (i=0;i<3;i++){
-              for (int ii=0;ii<4;ii++){
-                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[i].tbyte[ii];
+            for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
+              for (int b=0;b<4;b++){
+                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tByte[b];
               }
             }
          }
@@ -616,7 +638,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) {
          break;
 
 
-     // Function 0F - USB/Serial Midi midi routing rules
+     // Function 0F - USB/Serial Midi routing rules
      // 02 Midi filter
      case 0x0F020000: // Cable
      case 0x0F020100: // Serial
@@ -1050,7 +1072,7 @@ void SysExInternalProcess(uint8_t source)
       } else
 
 			// Set transformer
-      if (sysExInternalBuffer[2] == 0x03  && msgLen == 8) {
+      if (sysExInternalBuffer[2] == 0x03) {
 
           uint8_t srcType = sysExInternalBuffer[3];
           uint8_t src = sysExInternalBuffer[4];
@@ -1061,13 +1083,13 @@ void SysExInternalProcess(uint8_t source)
           uint8_t zbyte = sysExInternalBuffer[9];       
 
           if (srcType == 0 ) { // Cable
-            if ( src  >= USBCABLE_INTERFACE_MAX) break;
-                EEPROM_Params.cableTransformers[src].transformers[tridx].i = tbyte << 24 | xbyte << 16 | ybyte << 8 | zbyte;
+            if ( src  >= USBCABLE_INTERFACE_MAX) break;     
+                EEPROM_Params.cableTransformers[src].transformers[tridx].i = (tbyte << 24 | xbyte << 16 | ybyte << 8 | zbyte);  
           } else
 
           if (srcType == 1) { // Serial
-            if ( src >= SERIAL_INTERFACE_COUNT) break;
-              EEPROM_Params.serialTransformers[src].transformers[tridx].i = tbyte << 24 | xbyte << 16 | ybyte << 8 | zbyte;
+            if ( src >= SERIAL_INTERFACE_COUNT) break;           
+                EEPROM_Params.serialTransformers[src].transformers[tridx].i = (tbyte << 24 | xbyte << 16 | ybyte << 8 | zbyte);
           } else break;
 
 
