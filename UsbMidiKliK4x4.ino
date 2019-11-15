@@ -416,9 +416,9 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
       
-      // Apply serial transformations, if any activated and event status within range of transformation status gate
+      // Apply serial transformations, if any activated and event status within range of transformation status gate idx
       for (int t=0;t<L3M_SERIAL_TF_IN_USE_COUNT;t++){
-        if ( BETWEEN(sts,L3M_SERIAL_TSTSF_LOWER,L3M_SERIAL_TSTSF_UPPER) || BETWEEN(pk->packet[1],L3M_SERIAL_TSTSF_LOWER,L3M_SERIAL_TSTSF_UPPER) )
+        if ( BETWEEN(StsToI(pk->packet[1]), L3M_SERIAL_TSTSF_LOWER, L3M_SERIAL_TSTSF_UPPER) )
           (transformerCommands[L3M_SERIAL_CMD].fnFn)(pk, L3M_SERIAL_PARMS);
       }
 
@@ -429,9 +429,9 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       serialOutTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
 
-      // Apply cable transformations, if any activated and event status within range of transformation status gate
+      // Apply cable transformations, if any activated and event status within range of transformation status gate idx
       for (int t=0;t<L3M_CABLE_TF_IN_USE_COUNT;t++){
-        if ( BETWEEN(sts,L3M_CABLE_TSTSF_LOWER,L3M_CABLE_TSTSF_UPPER) || BETWEEN(pk->packet[1],L3M_SERIAL_TSTSF_LOWER,L3M_SERIAL_TSTSF_UPPER) )
+        if ( BETWEEN(StsToI(pk->packet[1]), L3M_CABLE_TSTSF_LOWER, L3M_CABLE_TSTSF_UPPER) )
           (transformerCommands[L3M_CABLE_CMD].fnFn)(pk, L3M_CABLE_PARMS);
       }
 
@@ -530,9 +530,8 @@ void ResetMidiRoutingRules(uint8_t mode)
       for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
         EEPROM_Params.serialTransformers[i].transformers[t].i = 0; 
       }
-
+      
 	  }
-
 	}
 
 	if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_INTELLITHRU) {
@@ -616,48 +615,36 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) {
 
      // Function 0F - USB/Serial Midi routing rules
      // 03 Transformers
-     case 0x0F030000: // Cable
-     case 0x0F030100: { // Serial
+     case 0x0F030000: // Cable  - Slot 1
+     case 0x0F030001: // Cable  - Slot 2   
+     case 0x0F030002: // Cable  - Slot 3       
+     case 0x0F030100: // Serial - Slot 1
+     case 0x0F030101: // Serial - Slot 2
+     case 0x0F030102: // Serial - Slot 3
+     { 
          uint8_t sourcePort = port; //Macro alignment
-         src  = (fnId & 0x0000FF00) >> 8;
+         src  = (fnId & 0x0000FF00) >> 8;         
+         uint8_t slot  = (fnId & 0x0000000F);         
+
          if (src > 1) return 0;
          *(++buff2) = 0X03;
          *(++buff2) = src;
          *(++buff2) = port;
+         *(++buff2) = slot;
+         
          if (src) {
-            for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-              for (int b=0;b<4;b++){
-                
-                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tByte[b];
-
-//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tCmdCode;
-//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tParms.x;
-//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tParms.y;
-//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tParms.z;         
-//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tGate.gate.lower;
-//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tGate.gate.upper;
-                    
-              }
-              *(++buff2) = L3M_SERIAL_TSTSF_LOWER;
-              *(++buff2) = L3M_SERIAL_TSTSF_UPPER;
+            for (int b=0;b<4;b++){
+              *(++buff2) =  L3M_SERIAL_TSTSF_BYTE_B;                    
             }
+            *(++buff2) = StsToI(L3M_SERIAL_TSTSF_LOWER_SLOT);
+            *(++buff2) = StsToI(L3M_SERIAL_TSTSF_UPPER_SLOT);
          }
          else {
-            for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-              for (int b=0;b<4;b++){
-                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tByte[b];
-
-//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tCmdCode;
-//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tParms.x;
-//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tParms.y;
-//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tParms.z;         
-//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tGate.gate.lower;
-//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tGate.gate.upper;
-
-              }
-              *(++buff2) = L3M_CABLE_TSTSF_LOWER;
-              *(++buff2) = L3M_CABLE_TSTSF_UPPER;
+            for (int b=0;b<4;b++){
+              *(++buff2) =  L3M_CABLE_TSTSF_BYTE_B;
             }
+            *(++buff2) = StsToI(L3M_CABLE_TSTSF_LOWER_SLOT);
+            *(++buff2) = StsToI(L3M_CABLE_TSTSF_UPPER_SLOT);
          }
 
          break;
@@ -754,16 +741,48 @@ void SysexInternalDumpToStream(uint8_t dest) {
   }
 
   for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi transformers - 03 Midi Transformers Cable
+      // Function 0F - USB/Serial Midi midi transformers - 03 Midi Transformers Cable - Slot 0
       l = SysexInternalDumpConf(0x0F030000, j, sysExInternalBuffer);
       if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
       else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
       else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
   }
 
+    for ( uint8_t j=0; j != 16 ; j++) {
+      // Function 0F - USB/Serial Midi midi transformers - 03 Midi Transformers Cable - Slot 1
+      l = SysexInternalDumpConf(0x0F030001, j, sysExInternalBuffer);
+      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
+      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
+      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
+  }
+
   for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi transformers - 03 Midi Transformers Serial
+      // Function 0F - USB/Serial Midi midi transformers - 03 Midi Transformers Cable - Slot 2
+      l = SysexInternalDumpConf(0x0F030002, j, sysExInternalBuffer);
+      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
+      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
+      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
+  }
+
+  for ( uint8_t j=0; j != 16 ; j++) {
+      // Function 0F - USB/Serial Midi transformers - 03 Midi Transformers Serial - Slot 0
       l = SysexInternalDumpConf(0x0F030100, j, sysExInternalBuffer);
+      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
+      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
+      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
+  }
+
+  for ( uint8_t j=0; j != 16 ; j++) {
+      // Function 0F - USB/Serial Midi transformers - 03 Midi Transformers Serial - Slot 1
+      l = SysexInternalDumpConf(0x0F030101, j, sysExInternalBuffer);
+      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
+      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
+      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
+  }
+
+  for ( uint8_t j=0; j != 16 ; j++) {
+      // Function 0F - USB/Serial Midi transformers - 03 Midi Transformers Serial - Slot 2
+      l = SysexInternalDumpConf(0x0F030102, j, sysExInternalBuffer);
       if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
       else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
       else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
@@ -1099,41 +1118,70 @@ void SysExInternalProcess(uint8_t source)
 
 			// Set transformer
       if (sysExInternalBuffer[2] == 0x03) {
-        
-          /* Set transformers in order, or inUseCount will not work ! 
-             Todo: Fix this, add remove transformer function
-          */
+
+          // Set
+          // F0 77 77 78 0F 03 01 00 00 00 0B 1A 19 00 1A 1A F7 
+          // F0 77 77 78 0F 03 01   : Header, Route/Filter/Trans, Trans, Set
+          // 00 00 00               : cable, cable 0, transformer slot 0
+          // 0B 1A 19 00            : Event Map, Continue, Start
+          // 1A 1A                  : Continue, Continue
+          // F7                     : EOX
+
+          // Clear
+          // F0 77 77 78 0F 03 00 00 00 00 00 00 00 00 00 00 F7 
+          // F0 77 77 78 0F 03 00   : Header, Route/Filter/Trans, Trans, Clear
+          // 00 00                  : cable, cable 0
+          // 00 00 00 00 00 00 00   : NA
+          // F7                     : EOX
           
-          uint8_t srcType = sysExInternalBuffer[3];
-          uint8_t src = sysExInternalBuffer[4];
-          uint8_t transformerSlot = sysExInternalBuffer[5];
-          uint8_t commandbyte = sysExInternalBuffer[6];
-          uint8_t xbyte = sysExInternalBuffer[7];
-          uint8_t ybyte = sysExInternalBuffer[8];
-          uint8_t zbyte = sysExInternalBuffer[9]; 
-          uint8_t lowerStsApply = sysExInternalBuffer[10];
-          uint8_t upperStsApply = sysExInternalBuffer[11];       
+          uint8_t clearOrSet = sysExInternalBuffer[3];
+          uint8_t srcType = sysExInternalBuffer[4];
+          uint8_t src = sysExInternalBuffer[5];
+          uint8_t transformerSlot = sysExInternalBuffer[6];
+          uint8_t commandbyte = sysExInternalBuffer[7];
+          uint8_t xbyte = sysExInternalBuffer[8];
+          uint8_t ybyte = sysExInternalBuffer[9];
+          uint8_t zbyte = sysExInternalBuffer[10]; 
+          uint8_t lowerStsApply = sysExInternalBuffer[11];
+          uint8_t upperStsApply = sysExInternalBuffer[12];       
 
           if (srcType == 0 ) { // Cable
             if ( src  >= USBCABLE_INTERFACE_MAX) break;     
-                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tCmdCode = commandbyte;
-                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.x = xbyte;
-                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.y = ybyte;
-                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.z = zbyte;         
-                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.lower = lowerStsApply;
-                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.upper = upperStsApply;
-                EEPROM_Params.cableTransformers[src].inUseCount = transformerSlot + 1; 
+
+                if (clearOrSet == 0){
+                  EEPROM_Params.cableTransformers[src].transformers[transformerSlot].i = 0;
+                } else {
+
+                  EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tCmdCode = commandbyte;
+                  EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.x = xbyte;
+                  EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.y = ybyte;
+                  EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.z = zbyte;         
+
+                  EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.lower = IToSts(lowerStsApply);
+                  EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.upper = IToSts(upperStsApply);
+                  
+                  EEPROM_Params.cableTransformers[src].inUseCount = transformerSlot + 1; 
+                }
+                
           } else
 
           if (srcType == 1) { // Serial
-            if ( src >= SERIAL_INTERFACE_COUNT) break;           
-                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tCmdCode = commandbyte;
-                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.x = xbyte;
-                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.y = ybyte;
-                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.z = zbyte;         
-                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.lower = lowerStsApply;
-                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.upper = upperStsApply;
-                EEPROM_Params.serialTransformers[src].inUseCount = transformerSlot + 1; 
+            if ( src >= SERIAL_INTERFACE_COUNT) break;        
+
+                if (clearOrSet == 0){
+                  EEPROM_Params.serialTransformers[src].transformers[transformerSlot].i = 0;
+                } else {
+
+                  EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tCmdCode = commandbyte;
+                  EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.x = xbyte;
+                  EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.y = ybyte;
+                  EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.z = zbyte;         
+
+                  EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.lower = IToSts(lowerStsApply);
+                  EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.upper = IToSts(upperStsApply);
+                  
+                  EEPROM_Params.serialTransformers[src].inUseCount = transformerSlot + 1; 
+              }
 
           } else break;
 
