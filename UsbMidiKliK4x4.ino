@@ -505,10 +505,11 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 ///////////////////////////////////////////////////////////////////////////////
 void ResetMidiRoutingRules(uint8_t mode)
 {
+
 	if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_MIDIUSB) {
 
-	  for ( uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {  
-    
+	  for ( uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {
+
 			// Cables
 	    EEPROM_Params.midiRoutingRulesCable[i].filterMsk = midiXparser::allMsgTypeMsk;
 	    EEPROM_Params.midiRoutingRulesCable[i].cableInTargetsMsk = 0 ;
@@ -521,10 +522,11 @@ void ResetMidiRoutingRules(uint8_t mode)
 		}
 
 		for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
-			// Jack serial routing & filter
+
+			// Jack serial
 	    EEPROM_Params.midiRoutingRulesSerial[i].filterMsk = midiXparser::allMsgTypeMsk;
-	    EEPROM_Params.midiRoutingRulesSerial[i].cableInTargetsMsk = 1 << i;
-	    EEPROM_Params.midiRoutingRulesSerial[i].jackOutTargetsMsk = 0;
+	    EEPROM_Params.midiRoutingRulesSerial[i].cableInTargetsMsk = 1 << i ;
+	    EEPROM_Params.midiRoutingRulesSerial[i].jackOutTargetsMsk = 0  ;
       
       // Jack serial transformations
       for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
@@ -803,7 +805,6 @@ void SysexInternalDumpToStream(uint8_t dest) {
       else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
       else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
   }
-
   for ( uint8_t j=0; j != 16 ; j++) {
       // Function 0F - USB/Serial Midi midi routing rules - Cable to Cable
       l = SysexInternalDumpConf(0x0F010000, j, sysExInternalBuffer);
@@ -1112,7 +1113,7 @@ void SysExInternalProcess(uint8_t source)
 
       // reset to default routing
 
-      if (sysExInternalBuffer[2] == 0x00 && msgLen == 2) {
+      if (sysExInternalBuffer[2] == 0x00  && msgLen == 2) {
 					ResetMidiRoutingRules(ROUTING_RESET_MIDIUSB);
       } else
 
