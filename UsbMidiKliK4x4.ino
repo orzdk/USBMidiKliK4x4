@@ -416,10 +416,12 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
       
-      // Apply serial transformations
-      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        (transformerCommands[L3M_SERIAL_CMD].fnFn)(pk, L3M_SERIAL_PARMS);
+      // Apply serial transformations, if any activated and event status within range of transformation status gate
+      for (int t=0;t<L3M_SERIAL_TF_IN_USE_COUNT;t++){
+        if ( BETWEEN(sts,L3M_SERIAL_TSTSF_LOWER,L3M_SERIAL_TSTSF_UPPER) || BETWEEN(pk->packet[1],L3M_SERIAL_TSTSF_LOWER,L3M_SERIAL_TSTSF_UPPER) )
+          (transformerCommands[L3M_SERIAL_CMD].fnFn)(pk, L3M_SERIAL_PARMS);
       }
+
     }
   }
   else if (source == FROM_USB ) {
@@ -427,10 +429,12 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       serialOutTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
 
-      // Apply cable transformations
-      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        (transformerCommands[L3M_CABLE_CMD].fnFn)(pk, L3M_CABLE_PARMS);
+      // Apply cable transformations, if any activated and event status within range of transformation status gate
+      for (int t=0;t<L3M_CABLE_TF_IN_USE_COUNT;t++){
+        if ( BETWEEN(sts,L3M_CABLE_TSTSF_LOWER,L3M_CABLE_TSTSF_UPPER) || BETWEEN(pk->packet[1],L3M_SERIAL_TSTSF_LOWER,L3M_SERIAL_TSTSF_UPPER) )
+          (transformerCommands[L3M_CABLE_CMD].fnFn)(pk, L3M_CABLE_PARMS);
       }
+
   }
 
   else return; // Error.
@@ -501,7 +505,6 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 ///////////////////////////////////////////////////////////////////////////////
 void ResetMidiRoutingRules(uint8_t mode)
 {
-
 	if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_MIDIUSB) {
 
 	  for ( uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {  
@@ -513,7 +516,7 @@ void ResetMidiRoutingRules(uint8_t mode)
      
       // Cable transformations
       for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        EEPROM_Params.cableTransformers[i].transformers[t].i = 0;            
+        EEPROM_Params.cableTransformers[i].transformers[t].i = 0;  
       }
 		}
 
@@ -525,7 +528,7 @@ void ResetMidiRoutingRules(uint8_t mode)
       
       // Jack serial transformations
       for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        EEPROM_Params.serialTransformers[i].transformers[t].i = 0;
+        EEPROM_Params.serialTransformers[i].transformers[t].i = 0; 
       }
 
 	  }
@@ -614,7 +617,8 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) {
      // Function 0F - USB/Serial Midi routing rules
      // 03 Transformers
      case 0x0F030000: // Cable
-     case 0x0F030100: // Serial
+     case 0x0F030100: { // Serial
+         uint8_t sourcePort = port; //Macro alignment
          src  = (fnId & 0x0000FF00) >> 8;
          if (src > 1) return 0;
          *(++buff2) = 0X03;
@@ -623,19 +627,41 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) {
          if (src) {
             for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
               for (int b=0;b<4;b++){
+                
                 *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tByte[b];
+
+//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tCmdCode;
+//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tParms.x;
+//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tParms.y;
+//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tParms.z;         
+//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tGate.gate.lower;
+//                *(++buff2) = EEPROM_Params.serialTransformers[port].transformers[t].tPacket.tGate.gate.upper;
+                    
               }
+              *(++buff2) = L3M_SERIAL_TSTSF_LOWER;
+              *(++buff2) = L3M_SERIAL_TSTSF_UPPER;
             }
          }
          else {
             for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
               for (int b=0;b<4;b++){
                 *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tByte[b];
+
+//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tCmdCode;
+//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tParms.x;
+//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tParms.y;
+//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tParms.z;         
+//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tGate.gate.lower;
+//                *(++buff2) = EEPROM_Params.cableTransformers[port].transformers[t].tPacket.tGate.gate.upper;
+
               }
+              *(++buff2) = L3M_CABLE_TSTSF_LOWER;
+              *(++buff2) = L3M_CABLE_TSTSF_UPPER;
             }
          }
 
          break;
+     }     
 
 
      // Function 0F - USB/Serial Midi routing rules
@@ -1067,29 +1093,48 @@ void SysExInternalProcess(uint8_t source)
 
       // reset to default routing
 
-      if (sysExInternalBuffer[2] == 0x00  && msgLen == 2) {
+      if (sysExInternalBuffer[2] == 0x00 && msgLen == 2) {
 					ResetMidiRoutingRules(ROUTING_RESET_MIDIUSB);
       } else
 
 			// Set transformer
       if (sysExInternalBuffer[2] == 0x03) {
-
+        
+          /* Set transformers in order, or inUseCount will not work ! 
+             Todo: Fix this, add remove transformer function
+          */
+          
           uint8_t srcType = sysExInternalBuffer[3];
           uint8_t src = sysExInternalBuffer[4];
-          uint8_t tridx = sysExInternalBuffer[5];
-          uint8_t tbyte = sysExInternalBuffer[6];
+          uint8_t transformerSlot = sysExInternalBuffer[5];
+          uint8_t commandbyte = sysExInternalBuffer[6];
           uint8_t xbyte = sysExInternalBuffer[7];
           uint8_t ybyte = sysExInternalBuffer[8];
-          uint8_t zbyte = sysExInternalBuffer[9];       
+          uint8_t zbyte = sysExInternalBuffer[9]; 
+          uint8_t lowerStsApply = sysExInternalBuffer[10];
+          uint8_t upperStsApply = sysExInternalBuffer[11];       
 
           if (srcType == 0 ) { // Cable
             if ( src  >= USBCABLE_INTERFACE_MAX) break;     
-                EEPROM_Params.cableTransformers[src].transformers[tridx].i = (tbyte << 24 | xbyte << 16 | ybyte << 8 | zbyte);  
+                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tCmdCode = commandbyte;
+                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.x = xbyte;
+                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.y = ybyte;
+                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tParms.z = zbyte;         
+                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.lower = lowerStsApply;
+                EEPROM_Params.cableTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.upper = upperStsApply;
+                EEPROM_Params.cableTransformers[src].inUseCount = transformerSlot + 1; 
           } else
 
           if (srcType == 1) { // Serial
             if ( src >= SERIAL_INTERFACE_COUNT) break;           
-                EEPROM_Params.serialTransformers[src].transformers[tridx].i = (tbyte << 24 | xbyte << 16 | ybyte << 8 | zbyte);
+                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tCmdCode = commandbyte;
+                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.x = xbyte;
+                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.y = ybyte;
+                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tParms.z = zbyte;         
+                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.lower = lowerStsApply;
+                EEPROM_Params.serialTransformers[src].transformers[transformerSlot].tPacket.tGate.gate.upper = upperStsApply;
+                EEPROM_Params.serialTransformers[src].inUseCount = transformerSlot + 1; 
+
           } else break;
 
 

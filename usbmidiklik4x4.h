@@ -219,6 +219,8 @@ enum BusDeviceSate {
 #define EE_SIGNATURE "MDK"
 #define EE_PRMVER 20
 
+#include "libMMM_t.h"
+
 typedef struct {
         uint8_t         signature[3];
         uint16_t        size;
@@ -243,8 +245,8 @@ typedef struct {
         midiRoutingRule_t midiRoutingRulesCable[USBCABLE_INTERFACE_MAX];
         midiRoutingRule_t midiRoutingRulesSerial[B_SERIAL_INTERFACE_MAX];
 
-        channelTransformer_t cableTransformers[USBCABLE_INTERFACE_MAX];
-        channelTransformer_t serialTransformers[B_SERIAL_INTERFACE_MAX];
+        channelTransformers_t cableTransformers[USBCABLE_INTERFACE_MAX];
+        channelTransformers_t serialTransformers[B_SERIAL_INTERFACE_MAX];
 
         // IntelliThru
         midiRoutingRuleJack_t midiRoutingRulesIntelliThru[B_SERIAL_INTERFACE_MAX];
