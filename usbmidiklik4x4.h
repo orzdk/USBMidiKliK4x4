@@ -74,6 +74,9 @@ __ __| |           |  /_) |     ___|             |           |
 // LED light duration in milliseconds
 #define LED_PULSE_MILLIS  5
 
+// Number of 8-byte transformer slots on each output
+#define TRANSFORMERS_PR_CHANNEL 2
+
 // Boot modes
 enum nextBootMode {
     bootModeMidi   = 0,
