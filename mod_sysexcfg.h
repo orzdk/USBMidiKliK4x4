@@ -84,6 +84,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff)
 
          if (src) {
             isEvent = L3M_SERIAL_TR_IS_EVENT_TR;
+
             for (int b=0;b<4;b++){
               *(++buff2) =  StsToI(isEvent, L3M_SERIAL_TR_SLOT.tByte[b]);                    
             }
@@ -92,6 +93,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff)
          }
          else {
             isEvent = L3M_CABLE_TR_IS_EVENT_TR;
+            
             for (int b=0;b<4;b++){
               *(++buff2) =  StsToI(isEvent, L3M_CABLE_TR_SLOT.tByte[b]);
             }
@@ -535,13 +537,12 @@ void SysExInternalProcess(uint8_t source)
           uint8_t srcType = sysExInternalBuffer[4];
           uint8_t sourcePort = sysExInternalBuffer[5];
           uint8_t slot = sysExInternalBuffer[6];
-          uint8_t commandbyte = sysExInternalBuffer[7];
+          uint8_t command = sysExInternalBuffer[7];
           uint8_t xbyte = sysExInternalBuffer[8];
           uint8_t ybyte = sysExInternalBuffer[9];
           uint8_t zbyte = sysExInternalBuffer[10]; 
-          uint8_t lowerStsBoundary = sysExInternalBuffer[11];
-          uint8_t upperStsBoundary = sysExInternalBuffer[12];       
-          uint8_t isEventMapping = 0;
+          uint8_t lowerStsBound = sysExInternalBuffer[11];
+          uint8_t upperStsBound = sysExInternalBuffer[12];       
 
           if (srcType == 0 ) { // Cable
             if ( sourcePort  >= USBCABLE_INTERFACE_MAX) break;     
@@ -550,15 +551,13 @@ void SysExInternalProcess(uint8_t source)
                   L3M_CABLE_TR_SLOT.i = 0;
                 } else {
 
-                  isEventMapping = L3M_CABLE_TR_IS_EVENT_TR;
+                  L3M_CABLE_TR_SLOT.tPacket.tCmdCode = command;
+                  L3M_CABLE_TR_SLOT.tPacket.tParms.x = IToSts(command, xbyte);
+                  L3M_CABLE_TR_SLOT.tPacket.tParms.y = IToSts(command, ybyte);
+                  L3M_CABLE_TR_SLOT.tPacket.tParms.z = IToSts(command, zbyte);         
 
-                  L3M_CABLE_TR_SLOT.tPacket.tCmdCode = commandbyte;
-                  L3M_CABLE_TR_SLOT.tPacket.tParms.x = IToSts(isEventMapping, xbyte);
-                  L3M_CABLE_TR_SLOT.tPacket.tParms.y = IToSts(isEventMapping, ybyte);
-                  L3M_CABLE_TR_SLOT.tPacket.tParms.z = IToSts(isEventMapping, zbyte);         
-
-                  L3M_CABLE_TR_SLOT.tPacket.tGate.gate.lower = IToSts(isEventMapping,lowerStsBoundary);
-                  L3M_CABLE_TR_SLOT.tPacket.tGate.gate.upper = IToSts(isEventMapping,upperStsBoundary);
+                  L3M_CABLE_TR_SLOT.tPacket.tGate.gate.lower = IToSts(command,lowerStsBound);
+                  L3M_CABLE_TR_SLOT.tPacket.tGate.gate.upper = IToSts(command,upperStsBound);
                   
                   L3M_CABLE_TR_UNIT.inUseCount = slot + 1; 
                 }
@@ -572,15 +571,13 @@ void SysExInternalProcess(uint8_t source)
                   L3M_CABLE_TR_SLOT.i = 0;
                 } else {
 
-                  isEventMapping = L3M_SERIAL_TR_IS_EVENT_TR;
+                  L3M_SERIAL_TR_SLOT.tPacket.tCmdCode = command;
+                  L3M_SERIAL_TR_SLOT.tPacket.tParms.x = IToSts(command, xbyte);
+                  L3M_SERIAL_TR_SLOT.tPacket.tParms.y = IToSts(command, ybyte);
+                  L3M_SERIAL_TR_SLOT.tPacket.tParms.z = IToSts(command, zbyte);         
 
-                  L3M_SERIAL_TR_SLOT.tPacket.tCmdCode = commandbyte;
-                  L3M_SERIAL_TR_SLOT.tPacket.tParms.x = IToSts(isEventMapping, xbyte);
-                  L3M_SERIAL_TR_SLOT.tPacket.tParms.y = IToSts(isEventMapping, ybyte);
-                  L3M_SERIAL_TR_SLOT.tPacket.tParms.z = IToSts(isEventMapping, zbyte);         
-
-                  L3M_SERIAL_TR_SLOT.tPacket.tGate.gate.lower = IToSts(isEventMapping, lowerStsBoundary);
-                  L3M_SERIAL_TR_SLOT.tPacket.tGate.gate.upper = IToSts(isEventMapping, upperStsBoundary);
+                  L3M_SERIAL_TR_SLOT.tPacket.tGate.gate.lower = IToSts(command, lowerStsBound);
+                  L3M_SERIAL_TR_SLOT.tPacket.tGate.gate.upper = IToSts(command, upperStsBound);
                   
                   L3M_SERIAL_TR_UNIT.inUseCount = slot + 1; 
               }
