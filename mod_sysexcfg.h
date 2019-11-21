@@ -3,10 +3,62 @@
 #define _MOD_SYSEXCFG_H_
 #pragma once
 
-uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff) 
+void ResetMidiRoutingRules(uint8_t mode)
+{
+
+  if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_MIDIUSB) {
+
+    for (uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {
+
+      // Cables
+      EEPROM_Params.midiRoutingRulesCable[i].filterMsk = midiXparser::allMsgTypeMsk;
+      EEPROM_Params.midiRoutingRulesCable[i].cableInTargetsMsk = 0 ;
+      EEPROM_Params.midiRoutingRulesCable[i].jackOutTargetsMsk = 1 << i ;
+     
+      // Cable transformations
+      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
+        EEPROM_Params.cableTransformers[i].transformers[t].i = 0;  
+      }
+    }
+
+    for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
+
+      // Jack serial
+      EEPROM_Params.midiRoutingRulesSerial[i].filterMsk = midiXparser::allMsgTypeMsk;
+      EEPROM_Params.midiRoutingRulesSerial[i].cableInTargetsMsk = 1 << i ;
+      EEPROM_Params.midiRoutingRulesSerial[i].jackOutTargetsMsk = 0  ;
+      
+      // Jack serial transformations
+      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
+        EEPROM_Params.serialTransformers[i].transformers[t].i = 0; 
+      }
+      
+    }
+  }
+
+  if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_INTELLITHRU) {
+    // "Intelligent thru" serial mode
+    for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
+      EEPROM_Params.midiRoutingRulesIntelliThru[i].filterMsk = midiXparser::allMsgTypeMsk;
+      EEPROM_Params.midiRoutingRulesIntelliThru[i].jackOutTargetsMsk = 0B1111 ;
+    }
+    EEPROM_Params.intelliThruJackInMsk = 0;
+    EEPROM_Params.intelliThruDelayPeriod = DEFAULT_INTELLIGENT_MIDI_THRU_DELAY_PERIOD ;
+  }
+
+  // Disable "Intelligent thru" serial mode
+  if (mode == ROUTING_INTELLITHRU_OFF ) {
+    for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
+      EEPROM_Params.intelliThruJackInMsk = 0;
+    }
+  }
+}
+
+uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff) 
 {
 
   uint8_t src;
+  uint8_t slot;
   uint8_t dest = 0 ;
   uint16_t msk ;
   uint8_t i;
@@ -48,11 +100,11 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff)
      // 03 Routing rules
      case 0x0E030000:
           *(++buff2) = 0X03;
-          *(++buff2) = port;
-          *(++buff2) = EEPROM_Params.midiRoutingRulesIntelliThru[port].filterMsk;
+          *(++buff2) = sourcePort;
+          *(++buff2) = EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].filterMsk;
           c = 0;
           for ( i=0; i != 16 ; i++) {
-     						if ( EEPROM_Params.midiRoutingRulesIntelliThru[port].jackOutTargetsMsk & ( 1 << i) ) {
+     						if ( EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].jackOutTargetsMsk & ( 1 << i) ) {
                       *(++buff2) = i;
                       c++;
                 }
@@ -65,45 +117,41 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff)
      // 03 Transformers
      case 0x0F030000: // Cable  - Slot 1
      case 0x0F030001: // Cable  - Slot 2   
-     case 0x0F030002: // Cable  - Slot 3       
+     case 0x0F030002: // Cable  - Slot 3      
      case 0x0F030100: // Serial - Slot 1
      case 0x0F030101: // Serial - Slot 2
      case 0x0F030102: // Serial - Slot 3
-     { 
-         uint8_t sourcePort = port; //Macro alignment         
-         uint8_t slot  = (fnId & 0x0000000F);         
+         slot  = (fnId & 0x0000000F);         
          src  = (fnId & 0x0000FF00) >> 8;
 
          if (src > 1) return 0;
          *(++buff2) = 0X03;
+         *(++buff2) = 0X01;
          *(++buff2) = src;
-         *(++buff2) = port;
+         *(++buff2) = sourcePort;
          *(++buff2) = slot;
          
-         uint8_t isEvent;
-
          if (src) {
-            isEvent = L3M_SERIAL_TR_IS_EVENT_TR;
-
-            for (int b=0;b<4;b++){
-              *(++buff2) =  StsToI(isEvent, L3M_SERIAL_TR_SLOT.tByte[b]);                    
-            }
-            *(++buff2) = StsToI(isEvent, L3M_SERIAL_TR_SLOT.tPacket.tGate.gate.lower);
-            *(++buff2) = StsToI(isEvent, L3M_SERIAL_TR_SLOT.tPacket.tGate.gate.upper);
+            *(++buff2) = L3M_SERIAL_TR_SLOT.tPacket.tCmdCode;
+            *(++buff2) = encBigByte(L3M_SERIAL_TR_SLOT.tPacket.tParms.x);  
+            *(++buff2) = encBigByte(L3M_SERIAL_TR_SLOT.tPacket.tParms.y);  
+            *(++buff2) = encBigByte(L3M_SERIAL_TR_SLOT.tPacket.tParms.z);            
+            *(++buff2) = encBigByte(L3M_SERIAL_TR_SLOT.tPacket.tParms.v);  
+            *(++buff2) = encBigByte(L3M_SERIAL_TR_GATE.lower);
+            *(++buff2) = encBigByte(L3M_SERIAL_TR_GATE.upper);
          }
-         else {
-            isEvent = L3M_CABLE_TR_IS_EVENT_TR;
-            
-            for (int b=0;b<4;b++){
-              *(++buff2) =  StsToI(isEvent, L3M_CABLE_TR_SLOT.tByte[b]);
-            }
-            *(++buff2) = StsToI(isEvent, L3M_CABLE_TR_SLOT.tPacket.tGate.gate.lower);
-            *(++buff2) = StsToI(isEvent, L3M_CABLE_TR_SLOT.tPacket.tGate.gate.upper);
+         else {          
+            *(++buff2) = L3M_CABLE_TR_SLOT.tPacket.tCmdCode;
+            *(++buff2) = encBigByte(L3M_CABLE_TR_SLOT.tPacket.tParms.x);  
+            *(++buff2) = encBigByte(L3M_CABLE_TR_SLOT.tPacket.tParms.y);  
+            *(++buff2) = encBigByte(L3M_CABLE_TR_SLOT.tPacket.tParms.z);             
+            *(++buff2) = encBigByte(L3M_CABLE_TR_SLOT.tPacket.tParms.v);  
+            *(++buff2) = encBigByte(L3M_CABLE_TR_GATE.lower);
+            *(++buff2) = encBigByte(L3M_CABLE_TR_GATE.upper);
          }
 
          break;
-     }     
-
+   
 
      // Function 0F - USB/Serial Midi routing rules
      // 02 Midi filter
@@ -113,12 +161,12 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff)
          if (src > 1  ) return 0;
          *(++buff2) = 0X02;
          *(++buff2) = src;
-         *(++buff2) = port;
+         *(++buff2) = sourcePort;
          if (src) {
-            *(++buff2) = EEPROM_Params.midiRoutingRulesSerial[port].filterMsk;
+            *(++buff2) = EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
          }
          else {
-            *(++buff2) = EEPROM_Params.midiRoutingRulesCable[port].filterMsk;
+            *(++buff2) = EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
          }
 
          break;
@@ -134,13 +182,13 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff)
      if (src > 1 || dest > 1 ) return 0;
      *(++buff2) = 0X01;
      *(++buff2) = src;
-     *(++buff2) = port;
+     *(++buff2) = sourcePort;
      *(++buff2) = dest;
 
      if (src ) {
-       msk = dest ? EEPROM_Params.midiRoutingRulesSerial[port].jackOutTargetsMsk : EEPROM_Params.midiRoutingRulesSerial[port].cableInTargetsMsk;
+       msk = dest ? EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk : EEPROM_Params.midiRoutingRulesSerial[sourcePort].cableInTargetsMsk;
      } else {
-       msk = dest ? EEPROM_Params.midiRoutingRulesCable[port].jackOutTargetsMsk : EEPROM_Params.midiRoutingRulesCable[port].cableInTargetsMsk;
+       msk = dest ? EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk : EEPROM_Params.midiRoutingRulesCable[sourcePort].cableInTargetsMsk;
      } ;
 
      c = 0;
@@ -157,223 +205,88 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t port,uint8_t *buff)
   return buff2-buff+1;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Send a single cable SYSEX dump to the appropriate destination stream
-// 0 : Serial USB
-// 1 : Serial port 0
-// 2 : USB Cable 0
-///////////////////////////////////////////////////////////////////////////////
-// void SysexInternalDumpOneToStream(uint8_t dest, uint8_t routeOrFilter, uint8_t cableOrSerialSrc, uint8_t port, uint8_t cableOrSerialTgt) 
-// {
+void sysexDump(uint8_t dest, uint16_t l)
+{
+    if ( dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
+    else if ( dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
+    else if ( dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
+}
 
-//   /* Todo: NoData for transformer dump... */
+void SysexInternalDumpPortToStream(uint8_t dest, uint32_t dumpMask, uint8_t port) 
+{
 
-//   uint32_t dumpMask = 0x0F000000 | ( routeOrFilter << 16 ) | ( cableOrSerialSrc << 8 ) | cableOrSerialTgt;
-//   uint16_t l = SysexInternalDumpConf(dumpMask, port, sysExInternalBuffer); 
+  uint16_t l = SysexInternalDumpConf(dumpMask, port, sysExInternalBuffer); 
 
-//   if (l>0){
-//     if (dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-//     else if (dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-//     else if (dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-//   } else {
+  if (l){
+    sysexDump(dest,l);
+  } else {
     
-//     uint8_t nodata[10] = { 0xF0, 0x77, 0x77, 0x78, 0x3, routeOrFilter, cableOrSerialSrc, port, cableOrSerialTgt, 0xF7 };
+    uint8_t routeOrFilterOrTransformer  = (dumpMask & 0x00FF0000) >> 16;
+    uint8_t cableOrSerialSRC            = (dumpMask & 0x0000FF00) >> 8;
+    uint8_t filterOrTarget              = (dumpMask & 0x000000FF);
 
-//     if (dest == 0 ) {ShowBufferHexDump(nodata,10,0);Serial.println();}
-//     else if (dest == 1 ) serialHw[0]->write(nodata,10);
-//     else if (dest == 2 ) SysExSendMsgPacket(nodata,10);
-//   }
+    uint8_t nodata[10] = { 0xF0, 0x77, 0x77, 0x78, 0x3, routeOrFilterOrTransformer, cableOrSerialSRC, port, filterOrTarget, 0xF7 };
 
-// }
+    if (dest == 0 ) {ShowBufferHexDump(nodata,10,0);Serial.println();}
+    else if (dest == 1 ) serialHw[0]->write(nodata,10);
+    else if (dest == 2 ) SysExSendMsgPacket(nodata,10);
+  }
+}
 
 void SysexInternalDumpToStream(uint8_t dest) 
 {
-  
-  uint32_t keys[19] = {
-    0x0B000000, 0x0C000000, 0x0E020000, 0x0E030000
+  uint16_t l;
+  const uint8_t dmCount = 16;
+  uint32_t dumpMasks[dmCount] = {
+    0x0B000000, 0x0C000000, 0x0E020000, 0x0E030000,
     0x0F030000, 0x0F030001, 0x0F030002,
     0x0F030100, 0x0F030101, 0x0F030102,
-    0x0F030200, 0x0F030201, 0x0F030202,
     0x0F020000, 0x0F020100, 
     0x0F010000, 0x0F010001, 0x0F010100, 0x0F010101
-  }
+  };
 
-  for (int key=0; key<19; key++){
+  for (uint8_t dm=0;dm<dmCount;dm++){
 
-  }
+    uint8_t port = 0;
 
-  uint16_t l;
-
-  // Function 0B - Change USB Product String
-  l = SysexInternalDumpConf(0x0B000000, 0, sysExInternalBuffer);
-  if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-  else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-  else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-
-  // Function 0C - Change USB Vendor ID and Product ID
-  l = SysexInternalDumpConf(0x0C000000, 0, sysExInternalBuffer);
-  if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-  else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-  else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-
-  // Function 0E - Intellithru midi routing rules - 02 Timeout
-  l = SysexInternalDumpConf(0x0E020000, 0, sysExInternalBuffer);
-  if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-  else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-  else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0E - Intellithru midi routing rules - 03 Routing rules
-      l = SysexInternalDumpConf(0x0E030000, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi transformers - 03 Midi Transformers Cable - Slot 0
-      l = SysexInternalDumpConf(0x0F030000, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-    for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi transformers - 03 Midi Transformers Cable - Slot 1
-      l = SysexInternalDumpConf(0x0F030001, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi transformers - 03 Midi Transformers Cable - Slot 2
-      l = SysexInternalDumpConf(0x0F030002, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi transformers - 03 Midi Transformers Serial - Slot 0
-      l = SysexInternalDumpConf(0x0F030100, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi transformers - 03 Midi Transformers Serial - Slot 1
-      l = SysexInternalDumpConf(0x0F030101, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi transformers - 03 Midi Transformers Serial - Slot 2
-      l = SysexInternalDumpConf(0x0F030102, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi routing rules - 02 Midi filter Cable
-      l = SysexInternalDumpConf(0x0F020000, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi routing rules - 02 Midi filter Serial
-      l = SysexInternalDumpConf(0x0F020100, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi routing rules - Cable to Cable
-      l = SysexInternalDumpConf(0x0F010000, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi routing rules - Cable to Serial
-      l = SysexInternalDumpConf(0x0F010001, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-  }
-
-  for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi routing rules - Serial to Cable
-      l = SysexInternalDumpConf(0x0F010100, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
-   }
-
-   for ( uint8_t j=0; j != 16 ; j++) {
-      // Function 0F - USB/Serial Midi midi routing rules - Serial to Serial
-      l = SysexInternalDumpConf(0x0F010101, j, sysExInternalBuffer);
-      if ( l && dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
-      else if ( l && dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
-      else if ( l && dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
+    l = SysexInternalDumpConf(dumpMasks[dm], port, sysExInternalBuffer);
+    sysexDump(dest,l);
+     
+    if (dumpMasks[dm] >= 0x0E030000)
+    for (port=1; port!=16 ;port++) {
+        l = SysexInternalDumpConf(dumpMasks[dm], port, sysExInternalBuffer);
+        sysexDump(dest,l);
     }
 
+  }
 }
 
 void SysExInternalProcess(uint8_t source)
 {
   uint8_t msgLen = sysExInternalBuffer[0];
   uint8_t cmdId  = sysExInternalBuffer[1];
+  uint8_t dest;
 
   switch (cmdId) {
-
-
-    // ---------------------------------------------------------------------------
-    // Function 04 Sysex configuration channel/target dump
-    // Example : Routing, Cable 5, jacks: F0 77 77 78 04 01 00 05 01 F7
-    // Example : Filters, Cable 5       : F0 77 77 78 04 02 00 05 F7
-    // ---------------------------------------------------------------------------
-
-    /* TODO: Handle Transformer Dump */
-    // case 0x04:{
-     
-    //   uint8_t routeOrFilter = sysExInternalBuffer[2];
-    //   uint8_t cableOrSerial_Src = sysExInternalBuffer[3];
-    //   uint8_t port = sysExInternalBuffer[4];
-    //   uint8_t cableOrSerial_Tgt = sysExInternalBuffer[5] ? sysExInternalBuffer[5] : 0x0;
-
-    //   if (source == FROM_USB && midiUSBCx) {
-    //     SysexInternalDumpOneToStream(2, routeOrFilter, cableOrSerial_Src, port, cableOrSerial_Tgt);
-    //   } else
-    //   if (source == FROM_SERIAL ) {
-    //     SysexInternalDumpOneToStream(1, routeOrFilter, cableOrSerial_Src, port, cableOrSerial_Tgt);
-    //   }
-    //   break;
-      
-    // }
-
 
     // ---------------------------------------------------------------------------
     // Function 05 Sysex configuration dump
     // Example : F0 77 77 78 05 F7
     // ---------------------------------------------------------------------------
     case 0x05:
-      if (source == FROM_USB && midiUSBCx) {
-        // send to USB , cable 0
-        SysexInternalDumpToStream(2);
-      } else
-      if (source == FROM_SERIAL ) {
-        // Send to serial port 0 being the only possible for sysex
-        SysexInternalDumpToStream(1);
+      dest = source == FROM_USB && midiUSBCx ? 2 : 1;
+
+      if (sysExInternalBuffer[2] == 0){
+          SysexInternalDumpToStream(dest);
+      } else 
+      if (sysExInternalBuffer[2] == 1){
+          uint8_t port = sysExInternalBuffer[4];
+          uint32_t dumpMask = 0x0F000000 | (sysExInternalBuffer[3] << 16) | (sysExInternalBuffer[4] << 8) | sysExInternalBuffer[6];
+          SysexInternalDumpPortToStream(dest, dumpMask, port);
       }
+
       break;
+    
 
     // ---------------------------------------------------------------------------
     // Function 06 subId 0x01 - Identity request.
@@ -580,28 +493,13 @@ void SysExInternalProcess(uint8_t source)
 
       // reset to default routing
 
-      if (sysExInternalBuffer[2] == 0x00  && msgLen == 2) {
+      if (sysExInternalBuffer[2] == 0x00 && msgLen == 2) {
           ResetMidiRoutingRules(ROUTING_RESET_MIDIUSB);
       } else
 
       // Set transformer
       if (sysExInternalBuffer[2] == 0x03) {
-
-          // Set
-          // F0 77 77 78 0F 03 01 00 00 00 0B 1A 19 00 1A 1A F7 
-          // F0 77 77 78 0F 03 01   : Header, Route/Filter/Trans, Trans, Set
-          // 00 00 00               : cable, cable 0, transformer slot 0
-          // 0B 1A 19 00            : Event Map, Continue, Start
-          // 1A 1A                  : Continue, Continue
-          // F7                     : EOX
-
-          // Clear
-          // F0 77 77 78 0F 03 00 00 00 00 00 00 00 00 00 00 F7 
-          // F0 77 77 78 0F 03 00   : Header, Route/Filter/Trans, Trans, Clear
-          // 00 00                  : cable, cable 0
-          // 00 00 00 00 00 00 00   : NA
-          // F7                     : EOX
-          
+    
           uint8_t clearOrSet = sysExInternalBuffer[3];
           uint8_t srcType = sysExInternalBuffer[4];
           uint8_t sourcePort = sysExInternalBuffer[5];
@@ -610,46 +508,51 @@ void SysExInternalProcess(uint8_t source)
           uint8_t xbyte = sysExInternalBuffer[8];
           uint8_t ybyte = sysExInternalBuffer[9];
           uint8_t zbyte = sysExInternalBuffer[10]; 
-          uint8_t lowerStsBound = sysExInternalBuffer[11];
-          uint8_t upperStsBound = sysExInternalBuffer[12];       
+          uint8_t vbyte = sysExInternalBuffer[11]; 
+          uint8_t lowerStsBound = sysExInternalBuffer[12];
+          uint8_t upperStsBound = sysExInternalBuffer[13];              
 
           if (srcType == 0 ) { // Cable
-            if ( sourcePort  >= USBCABLE_INTERFACE_MAX) break;     
 
-                if (clearOrSet == 0){
-                  L3M_CABLE_TR_SLOT.i = 0;
-                } else {
+            if (sourcePort  >= USBCABLE_INTERFACE_MAX) break;     
 
-                  L3M_CABLE_TR_SLOT.tPacket.tCmdCode = command;
-                  L3M_CABLE_TR_SLOT.tPacket.tParms.x = IToSts(command, xbyte);
-                  L3M_CABLE_TR_SLOT.tPacket.tParms.y = IToSts(command, ybyte);
-                  L3M_CABLE_TR_SLOT.tPacket.tParms.z = IToSts(command, zbyte);         
+            if (clearOrSet == 0){
+              L3M_CABLE_TR_SLOT.i = 0;
+            } else {
 
-                  L3M_CABLE_TR_SLOT.tPacket.tGate.gate.lower = IToSts(command,lowerStsBound);
-                  L3M_CABLE_TR_SLOT.tPacket.tGate.gate.upper = IToSts(command,upperStsBound);
-                  
-                  L3M_CABLE_TR_UNIT.inUseCount = slot + 1; 
-                }
+              L3M_CABLE_TR_SLOT.tPacket.tCmdCode = command;
+              L3M_CABLE_TR_SLOT.tPacket.tParms.x = decBigByte(xbyte, vbyte & (1<<0));
+              L3M_CABLE_TR_SLOT.tPacket.tParms.y = decBigByte(ybyte, vbyte & (1<<1));
+              L3M_CABLE_TR_SLOT.tPacket.tParms.z = decBigByte(zbyte, vbyte & (1<<2));         
+              L3M_CABLE_TR_SLOT.tPacket.tParms.v = decBigByte(vbyte, vbyte & (1<<3)); 
+
+              L3M_CABLE_TR_GATE.lower = decBigByte(lowerStsBound,1);
+              L3M_CABLE_TR_GATE.upper = decBigByte(upperStsBound,1);
+              
+              L3M_CABLE_TR_UNIT.inUseCount = slot + 1; 
+            }
                 
           } else
 
           if (srcType == 1) { // Serial
-            if ( sourcePort >= SERIAL_INTERFACE_COUNT) break;        
 
-                if (clearOrSet == 0){
-                  L3M_CABLE_TR_SLOT.i = 0;
-                } else {
+            if (sourcePort >= SERIAL_INTERFACE_COUNT) break;        
 
-                  L3M_SERIAL_TR_SLOT.tPacket.tCmdCode = command;
-                  L3M_SERIAL_TR_SLOT.tPacket.tParms.x = IToSts(command, xbyte);
-                  L3M_SERIAL_TR_SLOT.tPacket.tParms.y = IToSts(command, ybyte);
-                  L3M_SERIAL_TR_SLOT.tPacket.tParms.z = IToSts(command, zbyte);         
+            if (clearOrSet == 0){
+              L3M_CABLE_TR_SLOT.i = 0;
+            } else {
 
-                  L3M_SERIAL_TR_SLOT.tPacket.tGate.gate.lower = IToSts(command, lowerStsBound);
-                  L3M_SERIAL_TR_SLOT.tPacket.tGate.gate.upper = IToSts(command, upperStsBound);
-                  
-                  L3M_SERIAL_TR_UNIT.inUseCount = slot + 1; 
-              }
+              L3M_SERIAL_TR_SLOT.tPacket.tCmdCode = command;
+              L3M_SERIAL_TR_SLOT.tPacket.tParms.x = decBigByte(xbyte, vbyte & (1<<0));
+              L3M_SERIAL_TR_SLOT.tPacket.tParms.y = decBigByte(ybyte, vbyte & (1<<1));
+              L3M_SERIAL_TR_SLOT.tPacket.tParms.z = decBigByte(zbyte, vbyte & (1<<2));         
+              L3M_SERIAL_TR_SLOT.tPacket.tParms.z = decBigByte(vbyte, vbyte & (1<<3));
+
+              L3M_SERIAL_TR_GATE.lower = decBigByte(lowerStsBound,1);
+              L3M_SERIAL_TR_GATE.upper = decBigByte(upperStsBound,1);
+              
+              L3M_SERIAL_TR_UNIT.inUseCount = slot + 1; 
+            }
 
           } else break;
 
@@ -680,7 +583,6 @@ void SysExInternalProcess(uint8_t source)
       } else
 
       // Set Routing targets
-
       if (sysExInternalBuffer[2] == 0x01  )
       {
 

@@ -74,7 +74,7 @@ __ __| |           |  /_) |     ___|             |           |
 // LED light duration in milliseconds
 #define LED_PULSE_MILLIS  5
 
-// Number of 8-byte transformer slots on each output
+// Number of transformer slots on each output
 #define TRANSFORMERS_PR_CHANNEL 2
 
 // Boot modes
@@ -233,7 +233,6 @@ typedef struct {
         uint8_t         nextBootMode;
         boolean         debugMode;
 
-
         // I2C device
         uint8_t         I2C_DeviceId;
 
@@ -247,8 +246,8 @@ typedef struct {
         midiRoutingRule_t midiRoutingRulesCable[USBCABLE_INTERFACE_MAX];
         midiRoutingRule_t midiRoutingRulesSerial[B_SERIAL_INTERFACE_MAX];
 
-        channelTransformers_t cableTransformers[USBCABLE_INTERFACE_MAX];
-        channelTransformers_t serialTransformers[B_SERIAL_INTERFACE_MAX];
+        portTransformerSlots_t cableTransformers[USBCABLE_INTERFACE_MAX];
+        portTransformerSlots_t serialTransformers[B_SERIAL_INTERFACE_MAX];
 
         // IntelliThru
         midiRoutingRuleJack_t midiRoutingRulesIntelliThru[B_SERIAL_INTERFACE_MAX];

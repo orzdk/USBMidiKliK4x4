@@ -399,6 +399,7 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	uint16_t *cableInTargets ;
 	uint16_t *serialOutTargets ;
 	uint8_t *inFilters ;
+  uint8_t slot ;
 
   // Save intelliThruActive and USBCx state as it could be changed in an interrupt
   // (when slave)
@@ -417,8 +418,8 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
       
       // Apply activated serial transformations within range of transformation status gate boundaries
-      for (int slot=0;slot<L3M_SERIAL_TR_UNIT.inUseCount;slot++){
-        if ( BETWEEN(pk->packet[1], L3M_SERIAL_TR_GATE.lower, L3M_SERIAL_TR_GATE.upper) )
+      for (slot=0;slot<L3M_SERIAL_TR_UNIT.inUseCount;slot++){
+        if (BETWEEN(pk->packet[1], L3M_SERIAL_TR_GATE.lower, L3M_SERIAL_TR_GATE.upper))
           (transformerCommands[L3M_SERIAL_TR_SLOT.tPacket.tCmdCode].fnFn)(pk, L3M_SERIAL_TR_SLOT.tPacket.tParms);
       }
 
@@ -430,8 +431,8 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
 
       // Apply activated cable transformations within range of transformation status gate boundaries
-      for (int slot=0;slot<L3M_CABLE_TR_UNIT.inUseCount;slot++){
-        if ( BETWEEN(pk->packet[1], L3M_CABLE_TR_GATE.lower, L3M_CABLE_TR_GATE.upper) )
+      for (slot=0;slot<L3M_CABLE_TR_UNIT.inUseCount;slot++){
+        if (BETWEEN(pk->packet[1], L3M_CABLE_TR_GATE.lower, L3M_CABLE_TR_GATE.upper))
           (transformerCommands[L3M_CABLE_TR_SLOT.tPacket.tCmdCode].fnFn)(pk, L3M_CABLE_TR_SLOT.tPacket.tParms);
       }
 
@@ -493,64 +494,6 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	          #endif
 	    	}
 			}
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Reset routing rules to default factory
-// ROUTING_RESET_ALL         : Factory defaults
-// ROUTING_RESET_MIDIUSB     : Midi USB and serial routing to defaults
-// ROUTING_RESET_INTELLITHRU : Intellithru to factory defaults
-// ROUTING_INTELLITHRU_OFF   : Stop IntelliThru
-///////////////////////////////////////////////////////////////////////////////
-void ResetMidiRoutingRules(uint8_t mode)
-{
-
-	if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_MIDIUSB) {
-
-	  for ( uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {
-
-			// Cables
-	    EEPROM_Params.midiRoutingRulesCable[i].filterMsk = midiXparser::allMsgTypeMsk;
-	    EEPROM_Params.midiRoutingRulesCable[i].cableInTargetsMsk = 0 ;
-	    EEPROM_Params.midiRoutingRulesCable[i].jackOutTargetsMsk = 1 << i ;
-     
-      // Cable transformations
-      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        EEPROM_Params.cableTransformers[i].transformers[t].i = 0;  
-      }
-		}
-
-		for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
-
-			// Jack serial
-	    EEPROM_Params.midiRoutingRulesSerial[i].filterMsk = midiXparser::allMsgTypeMsk;
-	    EEPROM_Params.midiRoutingRulesSerial[i].cableInTargetsMsk = 1 << i ;
-	    EEPROM_Params.midiRoutingRulesSerial[i].jackOutTargetsMsk = 0  ;
-      
-      // Jack serial transformations
-      for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        EEPROM_Params.serialTransformers[i].transformers[t].i = 0; 
-      }
-      
-	  }
-	}
-
-	if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_INTELLITHRU) {
-	  // "Intelligent thru" serial mode
-	  for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
-	    EEPROM_Params.midiRoutingRulesIntelliThru[i].filterMsk = midiXparser::allMsgTypeMsk;
-	    EEPROM_Params.midiRoutingRulesIntelliThru[i].jackOutTargetsMsk = 0B1111 ;
-		}
-		EEPROM_Params.intelliThruJackInMsk = 0;
-	  EEPROM_Params.intelliThruDelayPeriod = DEFAULT_INTELLIGENT_MIDI_THRU_DELAY_PERIOD ;
-	}
-
-	// Disable "Intelligent thru" serial mode
-	if (mode == ROUTING_INTELLITHRU_OFF ) {
-		for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
-			EEPROM_Params.intelliThruJackInMsk = 0;
-		}
 	}
 }
 
