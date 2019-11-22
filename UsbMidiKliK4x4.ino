@@ -296,66 +296,6 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// PARSE INTERNAL SYSEX, either for serial or USB
-// ----------------------------------------------------------------------------
-// Internal sysex must be transmitted on the first cable/midi jack (whatever routing).
-// Internal sysex are purely ignored on other cables or jack.
-///////////////////////////////////////////////////////////////////////////////
- void SysExInternalParse(uint8_t source, midiPacket_t *pk)
-{
-		static unsigned sysExInternalMsgIdx = 0;
-		static bool 	sysExInternalHeaderFound = false;
-
-		uint8_t cin   = pk->packet[0] & 0x0F ;
-    uint8_t cable = pk->packet[0] >> 4;
-
-		// Only SYSEX and concerned packet on cable or serial 1
-    if (cable > 0) return;
-		if (cin < 4 || cin > 7) return;
-		if (cin == 4 && pk->packet[1] != 0xF0 && sysExInternalMsgIdx<3 ) return;
-		if (cin > 4  && sysExInternalMsgIdx<3) return;
-
-		uint8_t pklen = ( cin == 4 ? 3 : cin - 4) ;
-		uint8_t ev = 1;
-
-		for ( uint8_t i = 0 ; i< pklen ; i++ ) {
-			if (sysExInternalHeaderFound) {
-				// Start storing the message in the msg buffer
-				// If Message too big. don't store...
-				if ( sysExInternalBuffer[0] <  sizeof(sysExInternalBuffer)-1  ) {
-						if (pk->packet[ev] != 0xF7) {
-							sysExInternalBuffer[0]++;
-							sysExInternalBuffer[sysExInternalBuffer[0]]  = pk->packet[ev];
-						}
-						ev++;
-				}
-			}	else
-
-			if ( sysExInternalHeader[sysExInternalMsgIdx] == pk->packet[ev] ) {
-				sysExInternalMsgIdx++;
-				ev++;
-				if ( sysExInternalMsgIdx >= sizeof(sysExInternalHeader) ) {
-					sysExInternalHeaderFound = true;
-					sysExInternalBuffer[0] = 0; // Len of the sysex buffer
-				}
-			}
-			else {
-				// No match
-				sysExInternalMsgIdx = 0;
-				sysExInternalHeaderFound = false;
-				return;
-			}
-		}
-
-		// End of SYSEX for a valid message ? => Process
-		if (cin != 4  && sysExInternalHeaderFound ) {
-			sysExInternalMsgIdx = 0;
-			sysExInternalHeaderFound = false;
-			SysExInternalProcess(source);
-		}
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // THE MIDI PACKET ROUTER
 //-----------------------------------------------------------------------------
 // Route a packet from a midi IN jack / USB OUT to
@@ -378,7 +318,7 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
     }
   }
 
-  uint8_t cin   = pk->packet[0] & 0x0F ;
+  uint8_t cin = pk->packet[0] & 0x0F ;
 
 	FLASH_LED_IN(sourcePort);
 
@@ -399,7 +339,7 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	uint16_t *cableInTargets ;
 	uint16_t *serialOutTargets ;
 	uint8_t *inFilters ;
-  uint8_t slot ;
+  uint8_t slot;
 
   // Save intelliThruActive and USBCx state as it could be changed in an interrupt
   // (when slave)
@@ -501,7 +441,9 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 // Send a SYSEX midi message to USB Cable 0
 ///////////////////////////////////////////////////////////////////////////////
 void SysExSendMsgPacket( uint8_t buff[],uint16_t sz) 
-{ midiPacket_t pk { .i = 0};
+{ 
+
+  midiPacket_t pk { .i = 0};
   uint8_t b=0;
   bool endPk;
   // Build sysex packets

@@ -246,11 +246,12 @@ typedef struct {
         midiRoutingRule_t midiRoutingRulesCable[USBCABLE_INTERFACE_MAX];
         midiRoutingRule_t midiRoutingRulesSerial[B_SERIAL_INTERFACE_MAX];
 
-        portTransformerSlots_t cableTransformers[USBCABLE_INTERFACE_MAX];
-        portTransformerSlots_t serialTransformers[B_SERIAL_INTERFACE_MAX];
+        midiTransformerSlots_t transformersCable[USBCABLE_INTERFACE_MAX];
+        midiTransformerSlots_t transformersSerial[B_SERIAL_INTERFACE_MAX];
 
         // IntelliThru
         midiRoutingRuleJack_t midiRoutingRulesIntelliThru[B_SERIAL_INTERFACE_MAX];
+        
         uint16_t          intelliThruJackInMsk;
         uint8_t           intelliThruDelayPeriod; // 1 to 255 periods of 15s.
 
