@@ -358,8 +358,10 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
       
       // Apply activated serial transformations within range of transformation status gate boundaries
-      for (slot=0;slot<L3M_SERIAL_TR_UNIT.inUseCount;slot++){
-        if (BETWEEN(pk->packet[1], L3M_SERIAL_TR_GATE.lower, L3M_SERIAL_TR_GATE.upper))
+      if (L3M_SERIAL_TR_UNIT.slotsInUse)
+      for (slot=0;slot<L3M_SERIAL_TR_UNIT.slotsInUse;slot++){
+        //if (BETWEEN(pk->packet[1], L3M_SERIAL_TR_GATE.lower, L3M_SERIAL_TR_GATE.upper))
+        if ((unsigned)(pk->packet[1]-L3M_SERIAL_TR_GATE.lower) <= (L3M_SERIAL_TR_GATE.upper-L3M_SERIAL_TR_GATE.lower))
           (transformerCommands[L3M_SERIAL_TR_SLOT.tPacket.tCmdCode].fnFn)(pk, L3M_SERIAL_TR_SLOT.tPacket.tParms);
       }
 
@@ -371,8 +373,10 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
 
       // Apply activated cable transformations within range of transformation status gate boundaries
-      for (slot=0;slot<L3M_CABLE_TR_UNIT.inUseCount;slot++){
-        if (BETWEEN(pk->packet[1], L3M_CABLE_TR_GATE.lower, L3M_CABLE_TR_GATE.upper))
+      if(L3M_CABLE_TR_UNIT.slotsInUse)
+      for (slot=0;slot<L3M_CABLE_TR_UNIT.slotsInUse;slot++){
+        //if (BETWEEN(pk->packet[1], L3M_CABLE_TR_GATE.lower, L3M_CABLE_TR_GATE.upper))
+         if ((unsigned)(pk->packet[1]-L3M_CABLE_TR_GATE.lower) <= (L3M_CABLE_TR_GATE.upper-L3M_CABLE_TR_GATE.lower)) 
           (transformerCommands[L3M_CABLE_TR_SLOT.tPacket.tCmdCode].fnFn)(pk, L3M_CABLE_TR_SLOT.tPacket.tParms);
       }
 

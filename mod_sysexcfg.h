@@ -592,7 +592,7 @@ void SysExInternalProcess(uint8_t source)
 
               L3M_CABLE_TR_GATE.lower = lowert;            
               L3M_CABLE_TR_GATE.upper = upperta;
-              L3M_CABLE_TR_UNIT.inUseCount = slot + 1; 
+              L3M_CABLE_TR_UNIT.slotsInUse = slot + 1; 
             }
                 
           } else
@@ -614,7 +614,7 @@ void SysExInternalProcess(uint8_t source)
               L3M_SERIAL_TR_GATE.lower = lowert;
               L3M_SERIAL_TR_GATE.upper = upperta;
               
-              L3M_SERIAL_TR_UNIT.inUseCount = slot + 1; 
+              L3M_SERIAL_TR_UNIT.slotsInUse = slot + 1; 
             }
 
           } else break;
