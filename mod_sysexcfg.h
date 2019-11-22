@@ -76,7 +76,7 @@ void ResetMidiRoutingRules(uint8_t mode)
       }
     }
 
-    for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
+    for ( uint8_t i = 0 ; i != SERIAL_INTERFACE_CONFIG_MAX ; i++ ) {
 
       // Jack serial
       EEPROM_Params.midiRoutingRulesSerial[i].filterMsk = midiXparser::allMsgTypeMsk;
@@ -599,7 +599,7 @@ void SysExInternalProcess(uint8_t source)
 
           if (srcType == 1) { // Serial
 
-            if (sourcePort >= SERIAL_INTERFACE_COUNT) break;        
+            if (sourcePort >= SERIAL_INTERFACE_CONFIG_MAX) break;        
 
             if (!clearOrSet){
               L3M_CABLE_TR_SLOT.i = 0;
@@ -638,7 +638,7 @@ void SysExInternalProcess(uint8_t source)
           } else
 
           if (srcType == 1) { // Serial
-            if ( src >= SERIAL_INTERFACE_COUNT) break;
+            if ( src >= SERIAL_INTERFACE_CONFIG_MAX) break;
               EEPROM_Params.midiRoutingRulesSerial[src].filterMsk = filterMsk;
           } else break;
 
@@ -658,16 +658,16 @@ void SysExInternalProcess(uint8_t source)
         if (srcType != 0 && srcType != 1 ) break;
         if (dstType != 0 && dstType != 1 ) break;
         if (srcType  == 0 && src >= USBCABLE_INTERFACE_MAX ) break;
-        if (srcType  == 1 && src >= SERIAL_INTERFACE_COUNT) break;
+        if (srcType  == 1 && src >= SERIAL_INTERFACE_CONFIG_MAX ) break;
         if (dstType  == 0 &&  msgLen > (USBCABLE_INTERFACE_MAX + 5) )  break;
-        if (dstType  == 1 &&  msgLen > (SERIAL_INTERFACE_COUNT + 5) )  break;
+        if (dstType  == 1 &&  msgLen > (SERIAL_INTERFACE_CONFIG_MAX + 5) )  break;
 
         // Compute mask from the port list
         uint16_t msk = 0;
         for ( uint8_t i = 6 ; i != (msgLen+1)  ; i++) {
             uint8_t b = sysExInternalBuffer[i];
             if ( (dstType == 0 && b < USBCABLE_INTERFACE_MAX) ||
-                 (dstType == 1 && b < SERIAL_INTERFACE_COUNT) ) {
+                 (dstType == 1 && b < SERIAL_INTERFACE_CONFIG_MAX) ) {
 
                    msk |=   1 << b ;
             }
