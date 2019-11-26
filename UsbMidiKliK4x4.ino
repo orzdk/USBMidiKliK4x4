@@ -336,9 +336,9 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	}
 
 	// ROUTING tables
-	uint16_t *cableInTargets ;
-	uint16_t *serialOutTargets ;
-	uint8_t *inFilters ;
+	uint16_t *cableInTargets;
+	uint16_t *serialOutTargets;
+	uint8_t *inFilters;
   uint8_t slot;
 
   // Save intelliThruActive and USBCx state as it could be changed in an interrupt
@@ -346,37 +346,40 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
   boolean ithru = intelliThruActive;
 
   if (source == FROM_SERIAL ){
-    // IntelliThru active ? If so, take the good routing rules
+    
     if ( ithru ) {
 			if ( ! EEPROM_Params.intelliThruJackInMsk ) return; // Double check.
       serialOutTargets = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].filterMsk;
     }
-    else {
-      cableInTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].cableInTargetsMsk;
-      serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
-      inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
-      
-      // Apply activated serial transformations within range of transformation status gate boundaries
-      if (L3M_SERIAL_TR_UNIT.slotsInUse)
-      for (slot=0;slot<L3M_SERIAL_TR_UNIT.slotsInUse;slot++){
-        if ((unsigned)(pk->packet[1]-L3M_SERIAL_TR_GATE.lower) <= (L3M_SERIAL_TR_GATE.upper-L3M_SERIAL_TR_GATE.lower))
-          (transformerCommands[L3M_SERIAL_TR_SLOT.tPacket.tCmdCode].fnFn)(pk, L3M_SERIAL_TR_SLOT.tPacket.tParms);
-      }
+  
+    else if (source == FROM_USB ) {
 
-    }
-  }
-  else if (source == FROM_USB ) {
       cableInTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].cableInTargetsMsk;
       serialOutTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
-
-      // Apply activated cable transformations within range of transformation status gate boundaries
-      if(L3M_CABLE_TR_UNIT.slotsInUse)
-      for (slot=0;slot<L3M_CABLE_TR_UNIT.slotsInUse;slot++){
-         if ((unsigned)(pk->packet[1]-L3M_CABLE_TR_GATE.lower) <= (L3M_CABLE_TR_GATE.upper-L3M_CABLE_TR_GATE.lower)) 
-          (transformerCommands[L3M_CABLE_TR_SLOT.tPacket.tCmdCode].fnFn)(pk, L3M_CABLE_TR_SLOT.tPacket.tParms);
+      
+      if (ct_cmd){ /* transformer is hot if first command is set !=0, then all slots are checked, otherwise none are checked */
+        if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms); /* If gateFunction() then modFunction() */
+        slot=1; 
+        if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms);
       }
+
+    }
+
+    else {
+
+      cableInTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].cableInTargetsMsk;
+      serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
+      inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
+
+      if (st_cmd){
+        if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
+        slot=1; 
+        if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
+      }
+
+    } 
 
   }
 

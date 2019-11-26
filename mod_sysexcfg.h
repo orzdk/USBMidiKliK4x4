@@ -114,7 +114,6 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
 
   uint8_t src;
   uint8_t slot;
-  uint8_t upper;
   uint8_t dest = 0 ;
   uint16_t msk ;
   uint8_t i;
@@ -187,28 +186,24 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
          *(++buff2) = slot;
          
          if (src) {
-            upper = L3M_SERIAL_TR_GATE.upper < 0xF0 ? L3M_SERIAL_TR_GATE.upper & 0xF0 : L3M_SERIAL_TR_GATE.upper;
 
-            *(++buff2) = L3M_SERIAL_TR_SLOT.tPacket.tCmdCode;
-            *(++buff2) = encBigByte(L3M_SERIAL_TR_SLOT.tPacket.tParms.x);  
-            *(++buff2) = encBigByte(L3M_SERIAL_TR_SLOT.tPacket.tParms.y);  
-            *(++buff2) = encBigByte(L3M_SERIAL_TR_SLOT.tPacket.tParms.z);            
-            *(++buff2) = encBigByte(L3M_SERIAL_TR_SLOT.tPacket.tParms.v);  
-            *(++buff2) = encBigByte(L3M_SERIAL_TR_GATE.lower);
-            *(++buff2) = encBigByte(upper);
-
+            *(++buff2) = st_cmd;
+            *(++buff2) = encBigByte(st_parms.x);  
+            *(++buff2) = encBigByte(st_parms.y);  
+            *(++buff2) = encBigByte(st_parms.z);            
+            *(++buff2) = st_parms.d;  
+            *(++buff2) = st_parms.s;
+            *(++buff2) = st_parms.c;
          }
          else {          
-            upper = L3M_CABLE_TR_GATE.upper < 0xF0 ? L3M_CABLE_TR_GATE.upper & 0xF0 : L3M_CABLE_TR_GATE.upper;
 
-            *(++buff2) = L3M_CABLE_TR_SLOT.tPacket.tCmdCode;
-            *(++buff2) = encBigByte(L3M_CABLE_TR_SLOT.tPacket.tParms.x);  
-            *(++buff2) = encBigByte(L3M_CABLE_TR_SLOT.tPacket.tParms.y);  
-            *(++buff2) = encBigByte(L3M_CABLE_TR_SLOT.tPacket.tParms.z);             
-            *(++buff2) = encBigByte(L3M_CABLE_TR_SLOT.tPacket.tParms.v);  
-            *(++buff2) = encBigByte(L3M_CABLE_TR_GATE.lower);
-            *(++buff2) = encBigByte(upper);
-
+            *(++buff2) = ct_cmd;
+            *(++buff2) = encBigByte(ct_parms.x);  
+            *(++buff2) = encBigByte(ct_parms.y);  
+            *(++buff2) = encBigByte(ct_parms.z);            
+            *(++buff2) = ct_parms.d;  
+            *(++buff2) = ct_parms.s;
+            *(++buff2) = ct_parms.c;
          }
 
          break;
@@ -565,56 +560,45 @@ void SysExInternalProcess(uint8_t source)
           uint8_t sourcePort = sysExInternalBuffer[5];
           uint8_t slot = sysExInternalBuffer[6];
           uint8_t command = sysExInternalBuffer[7];
-          uint8_t xbyte = sysExInternalBuffer[8];
-          uint8_t ybyte = sysExInternalBuffer[9];
-          uint8_t zbyte = sysExInternalBuffer[10]; 
-          uint8_t vbyte = sysExInternalBuffer[11]; 
-          uint8_t lowerStsBound = sysExInternalBuffer[12];
-          uint8_t upperStsBound = sysExInternalBuffer[13];   
-
-          uint8_t lowert = decBigByte(lowerStsBound,1);
-          uint8_t uppert = decBigByte(upperStsBound,1);
-          uint8_t upperta = uppert < 0xF0 ? uppert | 0x0F : uppert;
+          uint8_t x = sysExInternalBuffer[8];
+          uint8_t y = sysExInternalBuffer[9];
+          uint8_t z = sysExInternalBuffer[10]; 
+          uint8_t d = sysExInternalBuffer[11]; 
+          uint8_t s = sysExInternalBuffer[12];
+          uint8_t c = sysExInternalBuffer[13];   
 
           if (srcType == 0 ) { // Cable
-
             if (sourcePort >= USBCABLE_INTERFACE_MAX) break;     
 
-            if (!clearOrSet){
-              L3M_CABLE_TR_SLOT.i = 0;
+            if (clearOrSet==0){
+              ct_slot.i = 0;
             } else {
 
-              L3M_CABLE_TR_SLOT.tPacket.tCmdCode = command;
-              L3M_CABLE_TR_SLOT.tPacket.tParms.x = decBigByte(xbyte, vbyte & 1);
-              L3M_CABLE_TR_SLOT.tPacket.tParms.y = decBigByte(ybyte, vbyte & (1<<1));
-              L3M_CABLE_TR_SLOT.tPacket.tParms.z = decBigByte(zbyte, vbyte & (1<<2));         
-              L3M_CABLE_TR_SLOT.tPacket.tParms.v = vbyte; 
-
-              L3M_CABLE_TR_GATE.lower = lowert;            
-              L3M_CABLE_TR_GATE.upper = upperta;
-              L3M_CABLE_TR_UNIT.slotsInUse = slot + 1; 
+              ct_cmd = command;
+              ct_parms.x = decBigByte(x, d & (1<<0));
+              ct_parms.y = decBigByte(y, d & (1<<1));
+              ct_parms.z = decBigByte(z, d & (1<<2));         
+              ct_parms.d = d; 
+              ct_parms.s = s;            
+              ct_parms.c = c; 
             }
                 
           } else
 
           if (srcType == 1) { // Serial
-
             if (sourcePort >= SERIAL_INTERFACE_CONFIG_MAX) break;        
 
-            if (!clearOrSet){
-              L3M_CABLE_TR_SLOT.i = 0;
+            if (clearOrSet==0){
+              st_slot.i = 0;
             } else {
 
-              L3M_SERIAL_TR_SLOT.tPacket.tCmdCode = command;
-              L3M_SERIAL_TR_SLOT.tPacket.tParms.x = decBigByte(xbyte, vbyte & 1);
-              L3M_SERIAL_TR_SLOT.tPacket.tParms.y = decBigByte(ybyte, vbyte & (1<<1));
-              L3M_SERIAL_TR_SLOT.tPacket.tParms.z = decBigByte(zbyte, vbyte & (1<<2));         
-              L3M_SERIAL_TR_SLOT.tPacket.tParms.v = vbyte;
-
-              L3M_SERIAL_TR_GATE.lower = lowert;
-              L3M_SERIAL_TR_GATE.upper = upperta;
-              
-              L3M_SERIAL_TR_UNIT.slotsInUse = slot + 1; 
+              st_cmd = command;
+              st_parms.x = decBigByte(x, d & (1<<0));
+              st_parms.y = decBigByte(y, d & (1<<1));
+              st_parms.z = decBigByte(z, d & (1<<2));         
+              st_parms.d = d;
+              st_parms.s = s;            
+              st_parms.c = c; 
             }
 
           } else break;
