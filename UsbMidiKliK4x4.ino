@@ -107,6 +107,7 @@ uint8_t sysExInternalHeader[] = {SYSEX_INTERNAL_HEADER} ;
 uint8_t sysExInternalIdentityRqReply[] = {SYSEX_INTERNAL_IDENTITY_RQ_REPLY};
 uint8_t sysExInternalBuffer[SYSEX_INTERNAL_BUFF_SIZE] ;
 
+
 // Intelligent midi thru mode
 volatile bool intelliThruActive = false;
 unsigned long intelliThruDelayMillis = DEFAULT_INTELLIGENT_MIDI_THRU_DELAY_PERIOD * 15000;
@@ -318,7 +319,7 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
     }
   }
 
-  uint8_t cin = pk->packet[0] & 0x0F ;
+  uint8_t cin   = pk->packet[0] & 0x0F ;
 
 	FLASH_LED_IN(sourcePort);
 
@@ -336,51 +337,47 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	}
 
 	// ROUTING tables
-	uint16_t *cableInTargets;
-	uint16_t *serialOutTargets;
-	uint8_t *inFilters;
-  uint8_t slot;
+	uint16_t *cableInTargets ;
+	uint16_t *serialOutTargets ;
+	uint8_t *inFilters ;
+  uint8_t slot = 0;
 
   // Save intelliThruActive and USBCx state as it could be changed in an interrupt
   // (when slave)
   boolean ithru = intelliThruActive;
 
   if (source == FROM_SERIAL ){
-    
+    // IntelliThru active ? If so, take the good routing rules
     if ( ithru ) {
 			if ( ! EEPROM_Params.intelliThruJackInMsk ) return; // Double check.
       serialOutTargets = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].filterMsk;
     }
-  
-    else if (source == FROM_USB ) {
-
-      cableInTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].cableInTargetsMsk;
-      serialOutTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk;
-      inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
-      
-      if (ct_cmd){ /* transformer is hot if first command is set !=0, then all slots are checked, otherwise none are checked */
-        if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms); /* If gateFunction() then modFunction() */
-        slot=1; 
-        if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms);
-      }
-
-    }
-
     else {
-
       cableInTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].cableInTargetsMsk;
       serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
 
-      if (st_cmd){
-        if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
+     if (st_cmd){
+       if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
         slot=1; 
-        if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
-      }
+        if (st_cmd) if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
+     }
+     
+    }
+  }
+  else if (source == FROM_USB ) {
+      cableInTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].cableInTargetsMsk;
+      serialOutTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk;
+      inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
+      
+     if (ct_cmd){ 
+       if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms);
+       slot=1; 
+       if (ct_cmd) if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms);
+     }
 
-    } 
-
+      
   }
 
   else return; // Error.

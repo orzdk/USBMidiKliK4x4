@@ -72,8 +72,9 @@ void ResetMidiRoutingRules(uint8_t mode)
      
       // Cable transformations
       for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        EEPROM_Params.transformersCable[i].transformers[t].i = 0;  
+        EEPROM_Params.transformersCable[i].transformers[t].i = 0; 
       }
+
     }
 
     for ( uint8_t i = 0 ; i != SERIAL_INTERFACE_CONFIG_MAX ; i++ ) {
