@@ -358,26 +358,21 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
       serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
 
-     if (st_cmd){
-       if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
-        slot=1; 
-        if (st_cmd) if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
-     }
-     
-    }
+      if ((st_fns.gateFn)(pk)){
+        (st_fns.modFn)(pk, st_parms);
+         slot=1; if ((st_fns.gateFn)(pk)) (st_fns.modFn)(pk, st_parms);
+      }  
+    }   
   }
   else if (source == FROM_USB ) {
       cableInTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].cableInTargetsMsk;
       serialOutTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
       
-     if (ct_cmd){ 
-       if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms);
-       slot=1; 
-       if (ct_cmd) if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms);
-     }
-
-      
+      if ((ct_fns.gateFn)(pk)){
+         (ct_fns.modFn)(pk, ct_parms);
+          slot=1; if ((ct_fns.gateFn)(pk)) (ct_fns.modFn)(pk, ct_parms);
+      }
   }
 
   else return; // Error.
