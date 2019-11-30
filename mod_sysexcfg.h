@@ -188,23 +188,23 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
          
          if (src) {
 
-            *(++buff2) = st_cmd;
-            *(++buff2) = encBigByte(st_parms.x);  
-            *(++buff2) = encBigByte(st_parms.y);  
-            *(++buff2) = encBigByte(st_parms.z);            
-            *(++buff2) = st_parms.d;  
-            *(++buff2) = st_parms.s;
-            *(++buff2) = st_parms.c;
+            *(++buff2) = sts_cmd(slot);
+            *(++buff2) = encBigByte(sts_parms(slot).x);  
+            *(++buff2) = encBigByte(sts_parms(slot).y);  
+            *(++buff2) = encBigByte(sts_parms(slot).z);            
+            *(++buff2) = sts_parms(slot).d;  
+            *(++buff2) = sts_parms(slot).s;
+            *(++buff2) = sts_parms(slot).c;
          }
          else {          
 
-            *(++buff2) = ct_cmd;
-            *(++buff2) = encBigByte(ct_parms.x);  
-            *(++buff2) = encBigByte(ct_parms.y);  
-            *(++buff2) = encBigByte(ct_parms.z);            
-            *(++buff2) = ct_parms.d;  
-            *(++buff2) = ct_parms.s;
-            *(++buff2) = ct_parms.c;
+            *(++buff2) = cts_cmd(slot);
+            *(++buff2) = encBigByte(cts_parms(slot).x);  
+            *(++buff2) = encBigByte(cts_parms(slot).y);  
+            *(++buff2) = encBigByte(cts_parms(slot).z);            
+            *(++buff2) = cts_parms(slot).d;  
+            *(++buff2) = cts_parms(slot).s;
+            *(++buff2) = cts_parms(slot).c;
          }
 
          break;
@@ -572,16 +572,16 @@ void SysExInternalProcess(uint8_t source)
             if (sourcePort >= USBCABLE_INTERFACE_MAX) break;     
 
             if (clearOrSet==0){
-              ct_slot.i = 0;
+              cts_slot(slot).i = 0;
             } else {
 
-              ct_cmd = command;
-              ct_parms.x = decBigByte(x, d & (1<<0));
-              ct_parms.y = decBigByte(y, d & (1<<1));
-              ct_parms.z = decBigByte(z, d & (1<<2));         
-              ct_parms.d = d; 
-              ct_parms.s = s;            
-              ct_parms.c = c; 
+              cts_cmd(slot) = command;
+              cts_parms(slot).x = decBigByte(x, d & (1<<0));
+              cts_parms(slot).y = decBigByte(y, d & (1<<1));
+              cts_parms(slot).z = decBigByte(z, d & (1<<2));         
+              cts_parms(slot).d = d; 
+              cts_parms(slot).s = s;            
+              cts_parms(slot).c = c; 
             }
                 
           } else
@@ -590,16 +590,16 @@ void SysExInternalProcess(uint8_t source)
             if (sourcePort >= SERIAL_INTERFACE_CONFIG_MAX) break;        
 
             if (clearOrSet==0){
-              st_slot.i = 0;
+              sts_slot(slot).i = 0;
             } else {
 
-              st_cmd = command;
-              st_parms.x = decBigByte(x, d & (1<<0));
-              st_parms.y = decBigByte(y, d & (1<<1));
-              st_parms.z = decBigByte(z, d & (1<<2));         
-              st_parms.d = d;
-              st_parms.s = s;            
-              st_parms.c = c; 
+              sts_cmd(slot) = command;
+              sts_parms(slot).x = decBigByte(x, d & (1<<0));
+              sts_parms(slot).y = decBigByte(y, d & (1<<1));
+              sts_parms(slot).z = decBigByte(z, d & (1<<2));         
+              sts_parms(slot).d = d;
+              sts_parms(slot).s = s;            
+              sts_parms(slot).c = c; 
             }
 
           } else break;
