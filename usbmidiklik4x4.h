@@ -74,9 +74,6 @@ __ __| |           |  /_) |     ___|             |           |
 // LED light duration in milliseconds
 #define LED_PULSE_MILLIS  5
 
-// Number of transformer slots on each output
-#define TRANSFORMERS_PR_CHANNEL 2
-
 // Boot modes
 enum nextBootMode {
     bootModeMidi   = 0,
@@ -137,6 +134,12 @@ typedef union {
   } __packed mpk;
   uint8_t packet[5];
 } __packed masterMidiPacket_t;
+
+
+/* L3M Integration */
+
+#define TRANSFORMERS_PR_CHANNEL 2
+#include <libMMM_t.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // BUS MODE
@@ -220,8 +223,6 @@ enum BusDeviceSate {
 ///////////////////////////////////////////////////////////////////////////////
 #define EE_SIGNATURE "MDK"
 #define EE_PRMVER 20
-
-#include "libMMM_t.h"
 
 typedef struct {
         uint8_t         signature[3];

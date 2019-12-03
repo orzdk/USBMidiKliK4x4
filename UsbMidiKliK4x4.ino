@@ -360,7 +360,6 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 
       if ((sts_fns(0).gateFn)(pk)) (sts_fns(0).modFn)(pk, sts_parms(0));
       if ((sts_fns(1).gateFn)(pk)) (sts_fns(1).modFn)(pk, sts_parms(1));
-
     }   
   }
   else if (source == FROM_USB ) {
@@ -370,7 +369,6 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 
       if ((cts_fns(0).gateFn)(pk)) (cts_fns(0).modFn)(pk, cts_parms(0));
       if ((cts_fns(1).gateFn)(pk)) (cts_fns(1).modFn)(pk, cts_parms(1));
-
   }
 
   else return; // Error.

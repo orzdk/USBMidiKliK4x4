@@ -72,11 +72,16 @@ void ResetMidiRoutingRules(uint8_t mode)
      
       // Cable transformations
       for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        EEPROM_Params.transformersCable[i].transformers[t].i = 0; 
+        EEPROM_Params.transformersCable[i].transformers[t].cmdIdx = 0;
+        EEPROM_Params.transformersCable[i].transformers[t].modParms.x = 0;
+        EEPROM_Params.transformersCable[i].transformers[t].modParms.y = 0;
+        EEPROM_Params.transformersCable[i].transformers[t].modParms.z = 0;
+        EEPROM_Params.transformersCable[i].transformers[t].modParms.d = 0;
+        EEPROM_Params.transformersCable[i].transformers[t].modParms.s = 0;
       }
 
     }
-
+  
     for ( uint8_t i = 0 ; i != SERIAL_INTERFACE_CONFIG_MAX ; i++ ) {
 
       // Jack serial
@@ -86,11 +91,22 @@ void ResetMidiRoutingRules(uint8_t mode)
       
       // Jack serial transformations
       for (int t=0;t<TRANSFORMERS_PR_CHANNEL;t++){
-        EEPROM_Params.transformersSerial[i].transformers[t].i = 0; 
+        EEPROM_Params.transformersSerial[i].transformers[t].cmdIdx = 0;
+        EEPROM_Params.transformersSerial[i].transformers[t].modParms.x = 0;
+        EEPROM_Params.transformersSerial[i].transformers[t].modParms.y = 0;
+        EEPROM_Params.transformersSerial[i].transformers[t].modParms.z = 0;
+        EEPROM_Params.transformersSerial[i].transformers[t].modParms.d = 0;
+        EEPROM_Params.transformersSerial[i].transformers[t].modParms.s = 0;
       }
       
     }
   }
+
+  /*  Todo: For some reason Cable 0 slot 0 cmdidx = serial 15 filter !
+      Flip it back for now
+   */
+     
+  EEPROM_Params.transformersCable[0].transformers[0].cmdIdx = 0;
 
   if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_INTELLITHRU) {
     // "Intelligent thru" serial mode
@@ -101,13 +117,14 @@ void ResetMidiRoutingRules(uint8_t mode)
     EEPROM_Params.intelliThruJackInMsk = 0;
     EEPROM_Params.intelliThruDelayPeriod = DEFAULT_INTELLIGENT_MIDI_THRU_DELAY_PERIOD ;
   }
-
+  
   // Disable "Intelligent thru" serial mode
   if (mode == ROUTING_INTELLITHRU_OFF ) {
     for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
       EEPROM_Params.intelliThruJackInMsk = 0;
     }
   }
+        
 }
 
 uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff) 
@@ -194,7 +211,6 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
             *(++buff2) = encBigByte(sts_parms(slot).z);            
             *(++buff2) = sts_parms(slot).d;  
             *(++buff2) = sts_parms(slot).s;
-            *(++buff2) = sts_parms(slot).c;
          }
          else {          
 
@@ -204,7 +220,6 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
             *(++buff2) = encBigByte(cts_parms(slot).z);            
             *(++buff2) = cts_parms(slot).d;  
             *(++buff2) = cts_parms(slot).s;
-            *(++buff2) = cts_parms(slot).c;
          }
 
          break;
@@ -566,13 +581,19 @@ void SysExInternalProcess(uint8_t source)
           uint8_t z = sysExInternalBuffer[10]; 
           uint8_t d = sysExInternalBuffer[11]; 
           uint8_t s = sysExInternalBuffer[12];
-          uint8_t c = sysExInternalBuffer[13];   
 
           if (srcType == 0 ) { // Cable
             if (sourcePort >= USBCABLE_INTERFACE_MAX) break;     
 
             if (clearOrSet==0){
-              cts_slot(slot).i = 0;
+              
+              cts_cmd(slot) = 0;
+              cts_parms(slot).x = 0;
+              cts_parms(slot).y = 0;
+              cts_parms(slot).z = 0;         
+              cts_parms(slot).d = 0; 
+              cts_parms(slot).s = 0; 
+              
             } else {
 
               cts_cmd(slot) = command;
@@ -581,7 +602,6 @@ void SysExInternalProcess(uint8_t source)
               cts_parms(slot).z = decBigByte(z, d & (1<<2));         
               cts_parms(slot).d = d; 
               cts_parms(slot).s = s;            
-              cts_parms(slot).c = c; 
             }
                 
           } else
@@ -590,7 +610,15 @@ void SysExInternalProcess(uint8_t source)
             if (sourcePort >= SERIAL_INTERFACE_CONFIG_MAX) break;        
 
             if (clearOrSet==0){
-              sts_slot(slot).i = 0;
+
+              sts_cmd(slot) = 0;
+              sts_parms(slot).x = 0;
+              sts_parms(slot).y = 0;
+              sts_parms(slot).z = 0;         
+              sts_parms(slot).d = 0;
+              sts_parms(slot).s = 0;            
+
+      
             } else {
 
               sts_cmd(slot) = command;
@@ -599,7 +627,6 @@ void SysExInternalProcess(uint8_t source)
               sts_parms(slot).z = decBigByte(z, d & (1<<2));         
               sts_parms(slot).d = d;
               sts_parms(slot).s = s;            
-              sts_parms(slot).c = c; 
             }
 
           } else break;
