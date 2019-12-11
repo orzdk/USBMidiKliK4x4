@@ -102,12 +102,6 @@ void ResetMidiRoutingRules(uint8_t mode)
     }
   }
 
-  /*  Todo: For some reason Cable 0 slot 0 cmdidx = serial 15 filter !
-      Flip it back for now
-   */
-     
-  EEPROM_Params.transformersCable[0].transformers[0].cmdIdx = 0;
-
   if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_INTELLITHRU) {
     // "Intelligent thru" serial mode
     for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
