@@ -1,0 +1,262 @@
+<script
+  src="https://code.jquery.com/jquery-3.4.1.js"
+  integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU="
+  crossorigin="anonymous">
+</script>
+
+<style>
+	*{
+		font-family: arial;
+		font-size: 11px
+	}
+
+	td{
+		text-align: left;vertical-align: top;
+	}
+
+	.sysexresult{
+		width: 250px;
+		padding: 200px;
+		margin: 0,auto;
+		font-size: 30px;
+		text-align: center;
+		vertical-align: middle;
+		/*border: 1px dashed black;*/
+	}
+
+	label{
+        user-select: none;
+        -moz-user-select: none;
+        -khtml-user-select: none;
+        -webkit-user-select: none;
+        -o-user-select: none;
+	} 
+
+</style>
+
+<h1 style="font-size: 30px">USBMidiKliK Sysex Configurator<h1>
+<hr>
+
+<table><tr><td>
+<label>
+<input type="radio" class="control reporadio" name="reporadio" value="thekikgen">
+TheKikGen Master</label>
+
+<label>	
+<input type="radio" class="control reporadio" name="reporadio" value="orzdk">
+ORZDK Fork</label>
+
+<hr>
+<br>
+
+<label>
+<input type="radio" class="control funcradio" name="funcradio" value="05">
+Fn 05 - Sysex configuration dump	</label>
+
+<label>
+<input type="radio" class="control funcradio" name="funcradio" value="06">
+Fn 06 - Universal Identity request</label>
+
+<label>	
+<input type="radio" class="control funcradio" name="funcradio" value="0A">
+Fn 0A - Hardware reset</label>
+
+<label>
+<input type="radio" class="control funcradio" name="funcradio" value="0B">
+Fn 0B - Change the device ProductStringName	</label>
+
+<label>
+<input type="radio" class="control control funcradio" name="funcradio" value="0C">
+Fn 0C - Change the USB VendorID and ProductID</label>
+
+<label>
+<input type="radio" class="control funcradio" name="funcradio" value="0E">
+Fn 0E - Intellithru midi routing rules</label>
+
+<label>
+<input type="radio" class="control funcradio" name="funcradio" value="0F">
+Fn 0F - JACK/USB Midi routing rules</label>
+
+<br>
+<br>
+
+
+
+<div class="page" id="dt05" style="display: none">dt05 - not implemented</div>
+<div class="page" id="dt06" style="display: none">dt06 - not implemented</div>
+<div class="page" id="dt0A" style="display: none">dt0A - not implemented</div>
+<div class="page" id="dt0B" style="display: none">dt0B - not implemented</div>
+<div class="page" id="dt0C" style="display: none">dt0C - not implemented</div>
+<div class="page" id="dt0E" style="display: none">dt0E - not implemented</div>
+
+<div class="page" id="dt0F">
+
+<hr>
+<br>
+<br>
+
+	<span style="font-size:13px; font-weight:bold">From:</span><br><br>
+
+	<label>
+	<input type="radio" class="control cableorjacksrcradio" name="cableorjacksrcradio" value="00" checked>
+	Cable</label>
+
+	<label>
+	<input type="radio" class="control cableorjacksrcradio" name="cableorjacksrcradio" value="01">
+	Jack</label>
+
+	<br><br>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	00</label>
+	
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	01</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	02</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	03</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	04</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	05</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	06</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	07</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	08</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	09</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	10</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	11</label>
+	<label>
+
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	12</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	13</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	14</label>
+
+	<label>
+	<input type="radio" class="control portradio" name="portradio" value="00">
+	15</label>
+
+	<br><br>
+
+	<span style="font-size:13px; font-weight:bold">To:</span><br><br>
+
+	<table><tr>
+		<td><table><tr><td>C0</td></tr><tr><td><input class="control" type="checkbox" id="C0"></td></tr></table></td>
+		<td><table><tr><td>C1</td></tr><tr><td><input class="control" type="checkbox" id="C1"></td></tr></table></td>
+		<td><table><tr><td>C2</td></tr><tr><td><input class="control" type="checkbox" id="C2"></td></tr></table></td>
+		<td><table><tr><td>C3</td></tr><tr><td><input class="control" type="checkbox" id="C3"></td></tr></table></td>
+		<td><table><tr><td>C4</td></tr><tr><td><input class="control" type="checkbox" id="C4"></td></tr></table></td>
+		<td><table><tr><td>C5</td></tr><tr><td><input class="control" type="checkbox" id="C5"></td></tr></table></td>
+		<td><table><tr><td>C6</td></tr><tr><td><input class="control" type="checkbox" id="C6"></td></tr></table></td>
+		<td><table><tr><td>C7</td></tr><tr><td><input class="control" type="checkbox" id="C7"></td></tr></table></td>
+		<td><table><tr><td>C8</td></tr><tr><td><input class="control" type="checkbox" id="C8"></td></tr></table></td>
+		<td><table><tr><td>C9</td></tr><tr><td><input class="control" type="checkbox" id="C9"></td></tr></table></td>
+		<td><table><tr><td>CA</td></tr><tr><td><input class="control" type="checkbox" id="CA"></td></tr></table></td>
+		<td><table><tr><td>CB</td></tr><tr><td><input class="control" type="checkbox" id="CB"></td></tr></table></td>
+		<td><table><tr><td>CC</td></tr><tr><td><input class="control" type="checkbox" id="CC"></td></tr></table></td>
+		<td><table><tr><td>CD</td></tr><tr><td><input class="control" type="checkbox" id="CD"></td></tr></table></td>
+		<td><table><tr><td>CE</td></tr><tr><td><input class="control" type="checkbox" id="CE"></td></tr></table></td>
+		<td><table><tr><td>CF</td></tr><tr><td><input class="control" type="checkbox" id="CF"></td></tr></table></td>
+	</tr></table>
+
+	<br><br>
+
+	<table><tr>
+		<td><table><tr><td>S0</td></tr><tr><td><input class="control" type="checkbox" id="S0"></td></tr></table></td>
+		<td><table><tr><td>S1</td></tr><tr><td><input class="control" type="checkbox" id="S1"></td></tr></table></td>
+		<td><table><tr><td>S2</td></tr><tr><td><input class="control" type="checkbox" id="S2"></td></tr></table></td>
+		<td><table><tr><td>S3</td></tr><tr><td><input class="control" type="checkbox" id="S3"></td></tr></table></td>
+		<td><table><tr><td>S4</td></tr><tr><td><input class="control" type="checkbox" id="S4"></td></tr></table></td>
+		<td><table><tr><td>S5</td></tr><tr><td><input class="control" type="checkbox" id="S5"></td></tr></table></td>
+		<td><table><tr><td>S6</td></tr><tr><td><input class="control" type="checkbox" id="S6"></td></tr></table></td>
+		<td><table><tr><td>S7</td></tr><tr><td><input class="control" type="checkbox" id="S7"></td></tr></table></td>
+		<td><table><tr><td>S8</td></tr><tr><td><input class="control" type="checkbox" id="S8"></td></tr></table></td>
+		<td><table><tr><td>S9</td></tr><tr><td><input class="control" type="checkbox" id="S9"></td></tr></table></td>
+		<td><table><tr><td>SA</td></tr><tr><td><input class="control" type="checkbox" id="SA"></td></tr></table></td>
+		<td><table><tr><td>SB</td></tr><tr><td><input class="control" type="checkbox" id="SB"></td></tr></table></td>
+		<td><table><tr><td>SC</td></tr><tr><td><input class="control" type="checkbox" id="SC"></td></tr></table></td>
+		<td><table><tr><td>SD</td></tr><tr><td><input class="control" type="checkbox" id="SD"></td></tr></table></td>
+		<td><table><tr><td>SE</td></tr><tr><td><input class="control" type="checkbox" id="SE"></td></tr></table></td>
+		<td><table><tr><td>SF</td></tr><tr><td><input class="control" type="checkbox" id="SF"></td></tr></table></td>
+	</tr></table>
+
+
+</div>
+
+</td><td>
+
+<div class="sysexresult">
+F0 77 77 78 01 0F
+</div>
+
+
+</td></tr></table>
+
+<script type="text/javascript">
+	
+	var buildString = function(){
+		var a = "";
+			
+		for (i=0;i<16;i++){
+
+			if($("#t" + i).is(':checked')){
+				console.log("t" + i);
+				a += i + ",";
+			}
+		}
+
+		console.log(a);
+
+	}	
+
+	$(document).ready(function(){
+		
+		$("input[name='funcradio']:radio").on("change", function() { 
+		    selected_value = $("input[name='funcradio']:checked").val();
+		    console.log(selected_value);
+		    $(".page").hide();
+		    $("#dt" + selected_value).show();
+		});
+
+		$(".control").on("click", function(){
+			buildString();
+		});
+
+	});
+
+</script>

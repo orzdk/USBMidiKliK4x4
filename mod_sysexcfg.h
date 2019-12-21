@@ -117,8 +117,7 @@ void ResetMidiRoutingRules(uint8_t mode)
     for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
       EEPROM_Params.intelliThruJackInMsk = 0;
     }
-  }
-        
+  }        
 }
 
 uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff) 
@@ -183,16 +182,14 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
      // Function 0F - USB/Serial Midi routing rules
      // 03 Transformers
      case 0x0F030000: // Cable  - Slot 1
-     case 0x0F030001: // Cable  - Slot 2   
-     case 0x0F030002: // Cable  - Slot 3      
+     case 0x0F030001: // Cable  - Slot 2     
      case 0x0F030100: // Serial - Slot 1
      case 0x0F030101: // Serial - Slot 2
-     case 0x0F030102: // Serial - Slot 3
-         slot = (fnId & 0x000000FF);         
+
          src  = (fnId & 0x0000FF00) >> 8;
+         slot = (fnId & 0x000000FF);         
 
          *(++buff2) = 0X03;
-         *(++buff2) = 0X01;
          *(++buff2) = src;
          *(++buff2) = sourcePort;
          *(++buff2) = slot;
@@ -291,7 +288,7 @@ void SysexInternalDumpPortToStream(uint8_t dest, uint32_t dumpMask, uint8_t port
     uint8_t cableOrSerialSRC            = (dumpMask & 0x0000FF00) >> 8;
     uint8_t filterOrTarget              = (dumpMask & 0x000000FF);
 
-    uint8_t nodata[10] = { 0xF0, 0x77, 0x77, 0x78, 0x3, routeOrFilterOrTransformer, cableOrSerialSRC, port, filterOrTarget, 0xF7 };
+    uint8_t nodata[10] = { 0xF0, 0x77, 0x77, 0x78, 0x9, routeOrFilterOrTransformer, cableOrSerialSRC, port, filterOrTarget, 0xF7 };
 
     if (dest == 0 ) {ShowBufferHexDump(nodata,10,0);Serial.println();}
     else if (dest == 1 ) serialHw[0]->write(nodata,10);
@@ -346,7 +343,7 @@ void SysExInternalProcess(uint8_t source)
           SysexInternalDumpToStream(dest);
       } else 
       if (sysExInternalBuffer[2] == 1){
-          uint8_t port = sysExInternalBuffer[4];
+          uint8_t port = sysExInternalBuffer[5];
           uint32_t dumpMask = 0x0F000000 | (sysExInternalBuffer[3] << 16) | (sysExInternalBuffer[4] << 8) | sysExInternalBuffer[6];
           SysexInternalDumpPortToStream(dest, dumpMask, port);
       }
@@ -565,30 +562,18 @@ void SysExInternalProcess(uint8_t source)
       // Set transformer
       if (sysExInternalBuffer[2] == 0x03 && msgLen == 13) {
     
-          uint8_t clearOrSet = sysExInternalBuffer[3];
-          uint8_t srcType = sysExInternalBuffer[4];
-          uint8_t sourcePort = sysExInternalBuffer[5];
-          uint8_t slot = sysExInternalBuffer[6];
-          uint8_t command = sysExInternalBuffer[7];
-          uint8_t x = sysExInternalBuffer[8];
-          uint8_t y = sysExInternalBuffer[9];
-          uint8_t z = sysExInternalBuffer[10]; 
-          uint8_t d = sysExInternalBuffer[11]; 
-          uint8_t s = sysExInternalBuffer[12];
+          uint8_t srcType = sysExInternalBuffer[3];
+          uint8_t sourcePort = sysExInternalBuffer[4];
+          uint8_t slot = sysExInternalBuffer[5];
+          uint8_t command = sysExInternalBuffer[6];
+          uint8_t x = sysExInternalBuffer[7];
+          uint8_t y = sysExInternalBuffer[8];
+          uint8_t z = sysExInternalBuffer[9]; 
+          uint8_t d = sysExInternalBuffer[10]; 
+          uint8_t s = sysExInternalBuffer[11];
 
           if (srcType == 0 ) { // Cable
             if (sourcePort >= USBCABLE_INTERFACE_MAX) break;     
-
-            if (clearOrSet==0){
-              
-              cts_cmd(slot) = 0;
-              cts_parms(slot).x = 0;
-              cts_parms(slot).y = 0;
-              cts_parms(slot).z = 0;         
-              cts_parms(slot).d = 0; 
-              cts_parms(slot).s = 0; 
-              
-            } else {
 
               cts_cmd(slot) = command;
               cts_parms(slot).x = decBigByte(x, d & (1<<0));
@@ -596,24 +581,11 @@ void SysExInternalProcess(uint8_t source)
               cts_parms(slot).z = decBigByte(z, d & (1<<2));         
               cts_parms(slot).d = d; 
               cts_parms(slot).s = s;            
-            }
-                
+               
           } else
 
           if (srcType == 1) { // Serial
             if (sourcePort >= SERIAL_INTERFACE_CONFIG_MAX) break;        
-
-            if (clearOrSet==0){
-
-              sts_cmd(slot) = 0;
-              sts_parms(slot).x = 0;
-              sts_parms(slot).y = 0;
-              sts_parms(slot).z = 0;         
-              sts_parms(slot).d = 0;
-              sts_parms(slot).s = 0;            
-
-      
-            } else {
 
               sts_cmd(slot) = command;
               sts_parms(slot).x = decBigByte(x, d & (1<<0));
@@ -621,7 +593,7 @@ void SysExInternalProcess(uint8_t source)
               sts_parms(slot).z = decBigByte(z, d & (1<<2));         
               sts_parms(slot).d = d;
               sts_parms(slot).s = s;            
-            }
+
 
           } else break;
 
