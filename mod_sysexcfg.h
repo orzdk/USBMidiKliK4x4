@@ -76,7 +76,6 @@ void ResetMidiRoutingRules(uint8_t mode)
         EEPROM_Params.transformersCable[i].transformers[t].modParms.x = 0;
         EEPROM_Params.transformersCable[i].transformers[t].modParms.y = 0;
         EEPROM_Params.transformersCable[i].transformers[t].modParms.z = 0;
-        EEPROM_Params.transformersCable[i].transformers[t].modParms.d = 0;
         EEPROM_Params.transformersCable[i].transformers[t].modParms.s = 0;
       }
 
@@ -95,7 +94,6 @@ void ResetMidiRoutingRules(uint8_t mode)
         EEPROM_Params.transformersSerial[i].transformers[t].modParms.x = 0;
         EEPROM_Params.transformersSerial[i].transformers[t].modParms.y = 0;
         EEPROM_Params.transformersSerial[i].transformers[t].modParms.z = 0;
-        EEPROM_Params.transformersSerial[i].transformers[t].modParms.d = 0;
         EEPROM_Params.transformersSerial[i].transformers[t].modParms.s = 0;
       }
       
@@ -197,19 +195,17 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
          if (src) {
 
             *(++buff2) = sts_cmd(slot);
-            *(++buff2) = encBigByte(sts_parms(slot).x);  
-            *(++buff2) = encBigByte(sts_parms(slot).y);  
-            *(++buff2) = encBigByte(sts_parms(slot).z);            
-            *(++buff2) = sts_parms(slot).d;  
+            *(++buff2) = sts_parms(slot).x;  
+            *(++buff2) = sts_parms(slot).y;  
+            *(++buff2) = sts_parms(slot).z;             
             *(++buff2) = sts_parms(slot).s;
          }
          else {          
 
             *(++buff2) = cts_cmd(slot);
-            *(++buff2) = encBigByte(cts_parms(slot).x);  
-            *(++buff2) = encBigByte(cts_parms(slot).y);  
-            *(++buff2) = encBigByte(cts_parms(slot).z);            
-            *(++buff2) = cts_parms(slot).d;  
+            *(++buff2) = cts_parms(slot).x;  
+            *(++buff2) = cts_parms(slot).y;  
+            *(++buff2) = cts_parms(slot).z;            
             *(++buff2) = cts_parms(slot).s;
          }
 
@@ -560,7 +556,7 @@ void SysExInternalProcess(uint8_t source)
       } else
 
       // Set transformer
-      if (sysExInternalBuffer[2] == 0x03 && msgLen == 13) {
+      if (sysExInternalBuffer[2] == 0x03) {
     
           uint8_t srcType = sysExInternalBuffer[3];
           uint8_t sourcePort = sysExInternalBuffer[4];
@@ -569,17 +565,15 @@ void SysExInternalProcess(uint8_t source)
           uint8_t x = sysExInternalBuffer[7];
           uint8_t y = sysExInternalBuffer[8];
           uint8_t z = sysExInternalBuffer[9]; 
-          uint8_t d = sysExInternalBuffer[10]; 
-          uint8_t s = sysExInternalBuffer[11];
+          uint8_t s = sysExInternalBuffer[10];
 
           if (srcType == 0 ) { // Cable
             if (sourcePort >= USBCABLE_INTERFACE_MAX) break;     
 
               cts_cmd(slot) = command;
-              cts_parms(slot).x = decBigByte(x, d & (1<<0));
-              cts_parms(slot).y = decBigByte(y, d & (1<<1));
-              cts_parms(slot).z = decBigByte(z, d & (1<<2));         
-              cts_parms(slot).d = d; 
+              cts_parms(slot).x = x;
+              cts_parms(slot).y = y;
+              cts_parms(slot).z = z;         
               cts_parms(slot).s = s;            
                
           } else
@@ -588,10 +582,9 @@ void SysExInternalProcess(uint8_t source)
             if (sourcePort >= SERIAL_INTERFACE_CONFIG_MAX) break;        
 
               sts_cmd(slot) = command;
-              sts_parms(slot).x = decBigByte(x, d & (1<<0));
-              sts_parms(slot).y = decBigByte(y, d & (1<<1));
-              sts_parms(slot).z = decBigByte(z, d & (1<<2));         
-              sts_parms(slot).d = d;
+              sts_parms(slot).x = x;
+              sts_parms(slot).y = y;
+              sts_parms(slot).z = z;         
               sts_parms(slot).s = s;            
 
 
