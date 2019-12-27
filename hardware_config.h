@@ -74,7 +74,7 @@ __ __| |           |  /_) |     ___|             |           |
     #warning "BLUEPILL HARDWARE DETECTED"
     #define HARDWARE_TYPE "BLUEPILL STMF103C8x"
     #define SERIAL_INTERFACE_MAX  3
-    #define SERIAL_INTERFACE_CONFIG_MAX  16
+    #define SERIAL_INTERFACE_CONFIG_MAX  15
     #define SERIALS_PLIST &Serial1,&Serial2,&Serial3
     #define LED_CONNECT PC13
   #else

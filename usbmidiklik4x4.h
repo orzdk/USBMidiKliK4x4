@@ -234,6 +234,7 @@ typedef struct {
         uint8_t         nextBootMode;
         boolean         debugMode;
 
+
         // I2C device
         uint8_t         I2C_DeviceId;
 
@@ -252,7 +253,6 @@ typedef struct {
 
         // IntelliThru
         midiRoutingRuleJack_t midiRoutingRulesIntelliThru[B_SERIAL_INTERFACE_MAX];
-        
         uint16_t          intelliThruJackInMsk;
         uint8_t           intelliThruDelayPeriod; // 1 to 255 periods of 15s.
 
