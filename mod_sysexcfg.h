@@ -620,7 +620,7 @@ void SysExInternalProcess(uint8_t source)
       if (sysExInternalBuffer[2] == 0x01  )
       {
 
-        if (msgLen < 6) break;
+        //if (msgLen < 6) break;
 
         uint8_t srcType = sysExInternalBuffer[3];
         uint8_t dstType = sysExInternalBuffer[5];
@@ -647,6 +647,7 @@ void SysExInternalProcess(uint8_t source)
         // Set masks
         if ( srcType == 0 ) { // Cable
             if (dstType == 0) // To cable
+
               EEPROM_Params.midiRoutingRulesCable[src].cableInTargetsMsk = msk;
             else // To serial
               EEPROM_Params.midiRoutingRulesCable[src].jackOutTargetsMsk = msk;
