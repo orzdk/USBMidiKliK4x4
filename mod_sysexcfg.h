@@ -68,35 +68,17 @@ void ResetMidiRoutingRules(uint8_t mode)
       // Cables
       cts_routing.filterMsk = midiXparser::allMsgTypeMsk;
       cts_routing.cableInTargetsMsk = 0;
-      cts_routing.jackOutTargetsMsk = 1 << i;
-     
-      // Cable transformations
-      for (int t=0;t<NUM_TRANSFORMER_SLOTS;t++){
-        cts_slot_i.cmdIdx = 0;
-        cts_slot_i.modParms.x = 0;
-        cts_slot_i.modParms.y = 0;
-        cts_slot_i.modParms.z = 0;
-        cts_slot_i.modParms.s = 0;
-      }
-
+      cts_routing.jackOutTargetsMsk = 0; //1 << i;
+      EEPROM_Params.transformersCable[i] = {0};
     }
   
     for ( uint8_t i = 0 ; i != SERIAL_INTERFACE_MAX ; i++ ) {
 
       // Jack serial
-      sts_routing.filterMsk = midiXparser::allMsgTypeMsk;
-      sts_routing.cableInTargetsMsk = 1 << i;
+      sts_routing.filterMsk = midiXparser::allMsgTypeMsk;      
+      sts_routing.cableInTargetsMsk = 0; //1 << i;
       sts_routing.jackOutTargetsMsk = 0;
-      
-      // Jack serial transformations
-      for (int t=0;t<NUM_TRANSFORMER_SLOTS;t++){
-        sts_slot_i.cmdIdx = 0;
-        sts_slot_i.modParms.x = 0;
-        sts_slot_i.modParms.y = 0;
-        sts_slot_i.modParms.z = 0;
-        sts_slot_i.modParms.s = 0;
-      }
-      
+      EEPROM_Params.transformersSerial[i] = {0};
     }
   }
 
@@ -177,7 +159,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
           break;
 
 
-     // Function 0F - USB/Serial Midi routing rules
+     // Function 0F - USB/Serial Midi routing, filter & transformer rules
      // 03 Transformers
      case 0x0F030000: // Cable  - Slot 1
      case 0x0F030001: // Cable  - Slot 2     
@@ -212,7 +194,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
          break;
    
 
-     // Function 0F - USB/Serial Midi routing rules
+     // Function 0F - USB/Serial Midi routing, filter & transformer rules
      // 02 Midi filter
      case 0x0F020000: // Cable
      case 0x0F020100: // Serial
@@ -230,7 +212,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
 
          break;
 
-     // Function 0F - USB/Serial Midi midi routing rules
+     // Function 0F - USB/Serial Midi routing, filter & transformer rules
      // 01 Routing rules
      case 0x0F010000: // Cable to Cable
      case 0x0F010001: // Cable to Serial
@@ -266,7 +248,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
 
 void sysexDump(uint8_t dest, uint16_t l)
 {
-    if ( dest == 0 ) {ShowBufferHexDump(sysExInternalBuffer,l,0);Serial.println();}
+    if ( dest == 0 ) { ShowBufferHexDump(sysExInternalBuffer,l,0); Serial.println(); }
     else if ( dest == 1 ) serialHw[0]->write(sysExInternalBuffer,l);
     else if ( dest == 2 ) SysExSendMsgPacket(sysExInternalBuffer,l);
 }
@@ -343,10 +325,8 @@ void SysExInternalProcess(uint8_t source)
           uint32_t dumpMask = 0x0F000000 | (sysExInternalBuffer[3] << 16) | (sysExInternalBuffer[4] << 8) | sysExInternalBuffer[6];
           SysexInternalDumpPortToStream(dest, dumpMask, port);
       }
-
       break;
     
-
     // ---------------------------------------------------------------------------
     // Function 06 subId 0x01 - Identity request.
     // Example : F0 77 77 78 06 01 F7
@@ -586,7 +566,6 @@ void SysExInternalProcess(uint8_t source)
               sts_parms(slot).y = y;
               sts_parms(slot).z = z;         
               sts_parms(slot).s = s;            
-
 
           } else break;
 
