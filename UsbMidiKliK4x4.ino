@@ -50,10 +50,11 @@ __ __| |           |  /_) |     ___|             |           |
 #include <Wire_slave.h>
 #include <PulseOutManager.h>
 #include <midiXparser.h>
+#include <l3m_mk_t.h>
 #include "usbmidiklik4x4.h"
 #include "usb_midi.h"
 #include "ringbuffer.h"
-#include <libMMM.h>
+#include <l3m_mk.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBALS
@@ -340,7 +341,6 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	uint16_t *cableInTargets ;
 	uint16_t *serialOutTargets ;
 	uint8_t *inFilters ;
-  uint8_t slot = 0;
 
   // Save intelliThruActive and USBCx state as it could be changed in an interrupt
   // (when slave)

@@ -1,37 +1,3 @@
-# Ongoing libmmm integration. Things break
-
-This is a fork of USBMidiKlik4x4 by TheKikGen
-
-//Dump all
-//--------------------------
-
-F0 77 77 78 05 00 F7
-
-//Reset
-//--------------------------
-
-F0 77 77 78 0F 00 F7 
-
-// Tested transformer config strings
-//--------------------------
-
-// 03, 01, Cable, Cable 00, Slot 00, Function 01, Offset 12, y, z, d, s, c
-// 03, 01, Cable, Cable 00, Slot 01, Function 08, Set channel to 11 (0B), y, z, d, s, c
-// 03, 01, Cable, Cable 01, Slot 00, Function 01, Offset 24, y, z, d, s, c
-// Route cable 0,1,2,3 to jack 0,1,2 (Board 1 TX/RX 1,2,3)
-
-F0 77 77 78 0F 03 01 00 00 00 01 12 00 00 00 00 00 F7
-F0 77 77 78 0F 03 01 00 00 01 08 0B 00 00 00 00 00 F7
-F0 77 77 78 0F 03 01 00 01 00 01 24 00 00 00 00 00 F7
-
-F0 77 77 78 0F 01 00 00 01 00 01 02 F7
-F0 77 77 78 0F 01 00 01 01 00 01 02 F7
-F0 77 77 78 0F 01 00 02 01 00 01 02 F7
-F0 77 77 78 0F 01 00 03 01 00 01 02 F7
-
-
-
-
 
         __ __| |           |  /_) |     ___|             |           |
            |   __ \   _ \  ' /  | |  / |      _ \ __ \   |      _` | __ \   __|
@@ -60,7 +26,7 @@ The current version V2 supports full USB midi until 16xIN , 16XOUT plus routing 
 
 ## USBMidiKliK4x4 features
 
-+ 16 MIDI IN / 16 MDI OUT Support
++ 16 MIDI IN / 16 MIDI OUT Support
 + Support 15 JACK IN / 15 JACK OUT in bus mode
 + Configuration with SYSEX and/or and interactive menu from a serial USB terminal
 + Complex routing rules also configurables by sysex or from an interactive user menu
@@ -79,6 +45,10 @@ The current version V2 supports full USB midi until 16xIN , 16XOUT plus routing 
 
 Configuration is stored in EEPROM and persists after power off.
 
+Last release of the firmware can be found here : https://github.com/TheKikGen/USBMidiKliK4x4/releases/
+Update tool is included. Unzip and launch the UMK_BluePillUpdate.bat file (Windows only currently).   
+
+
 ## Bluepill and USBMidiKlik 3x3
 
 <img width="250" border="0" src="https://2.bp.blogspot.com/-wo1H27RQYiU/XDzO9VG3vdI/AAAAAAAAAWA/KehLjyXhLTg_nmjjmEkO7LZtY5H83Rr-ACLcBGAs/s1600/20190113_221557.jpg"  />
@@ -86,6 +56,11 @@ Configuration is stored in EEPROM and persists after power off.
 I have realized a proto board, let's say a Bluepill "MIDI shield", to easily transform that cheap uC board to a powerfull 3 IN / 3 OUT USB MIDI interface, based on the exactly same firmware as USB MidiKlik 4x4.
 
 The board is USB Powered, so no additional power supply necessary. It works driverless as a class compliant device, with Windows XP SP3, Vista 32 and 64 Bit, Windows 7 / 8 / 10   32 and 64 Bit, and Mac OS X, Linux ALSA, Akai MPC Live/X/Force, IOS, Android.
+
+Some units are currently available at Tindie :
+<img width="50" border="0" src="https://d2ss6ovg47m0r5.cloudfront.net/images/tindie-logo@2x.png" />  
+https://www.tindie.com/products/thekikgenlabs/usb-midi-interface-3-io-with-routing-features/
+
 
 I have also designed a variant version of this PCB without DIN 5 female, to allow a deported DIN 5 rail.
 Contact me for more details.
@@ -109,7 +84,13 @@ The second way is to activate the configuration menu on the serial port with the
 
        F0 77 77 78 08 F7
 
-This sysex enables the serial configuration menu.  Immediatly after sending this sequence with your prefered midi software, the interface will reboot in CDC serial COM mode, allowing you to open a terminal to configure easily USBMIDIKLIK. 
+This sysex enables the serial configuration menu.  To send it, you can use for example, MIDIOX, or the "sendmidi" command line utility by gbevin :
+
+       sendmidi dev "USB MIDIKliK 4x4" syx hex 77 77 78 08
+
+You will find the last binary release of sendmidi here :  https://github.com/gbevin/SendMIDI/releases
+       
+Immediatly after sending this sequence with your prefered midi software, the interface will reboot in CDC serial COM mode, allowing you to open a terminal to configure easily USBMIDIKLIK. 
 You can use any software like TERATERM, on Windows, or "screen" on MacOs.  The bauds rate must be set to 115200.
 
 The following menu should appear after connecting to the right serial USB port , and pressing ENTER :
@@ -132,6 +113,13 @@ The following menu should appear after connecting to the right serial USB port ,
 
 # NEWS
 
+## Midi transformation pipelines (22 March 2020) ###
+
+I'm currently working on a powerfull new feature allowing to modify an incoming midi message via a "pipeline". A pipeline can be seen as a chain of transformation functions, e.g.,  transpose notes, split, map channel to another, map CC to another, etc....  
+The RC1 will be delivered around end of March.  Have a look at the MIDITRANS branch.
+
+<img width="450" border="0" src="https://github.com/TheKikGen/USBMidiKliK4x4/wiki/pipelines/pipelines1.jpg"  />
+
 ## Build 2.191207.1818 is ready (07 December 2019) ###
 
 Update tool is included.  Unzip and launch the UMK_BluePillUpdate.bat file (Windows only currently).
@@ -143,5 +131,6 @@ https://github.com/TheKikGen/USBMidiKliK4x4/releases/tag/build_2.191207.1818
 That major release offers now the possibility to aggregate until 5 Bluepill boards to get a 15x15 IN/OUT ports with routing....
 https://github.com/TheKikGen/USBMidiKliK4x4/wiki/USBMIDIKLIK-BUS-MODE-TO-AGGREGATE-5-boards-to-a-15x15-MIDI-USB-interface
 
-
+## MPC LIVE/X Midi ports hack has been moved to MPC-LiveXplore
+https://github.com/TheKikGen/MPC-LiveXplore/wiki/Add-2-new-midi-ports-C-D---a-quick-guide-with-MIDI-OX
 
