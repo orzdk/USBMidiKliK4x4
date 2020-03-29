@@ -97,7 +97,8 @@ enum MidiRoutingDirection {
 
 enum MidiRoutingRuleType {
   SERIAL_RULE,
-  USBCABLE_RULE,INTELLITHRU_RULE
+  USBCABLE_RULE,
+  INTELLITHRU_RULE
 };
 
 enum MidiRoutingReset {
@@ -114,10 +115,12 @@ typedef struct {
       uint16_t jackOutTargetsMsk;
 } __packed midiRoutingRule_t;
 
+/*
 typedef struct {
       uint8_t  filterMsk;
       uint16_t jackOutTargetsMsk;
 } __packed midiRoutingRuleJack_t;
+*/
 
 // Use this structure to send and receive packet to/from USB /serial/BUS
 typedef union  {
@@ -246,9 +249,11 @@ typedef struct {
         midiTransformerSlots_t transformersSerial[B_SERIAL_INTERFACE_MAX];
 
         // IntelliThru
+        /*
         midiRoutingRuleJack_t midiRoutingRulesIntelliThru[B_SERIAL_INTERFACE_MAX];
         uint16_t          intelliThruJackInMsk;
         uint8_t           intelliThruDelayPeriod; // 1 to 255 periods of 15s.
+        */
 
         uint16_t        vendorID;
         uint16_t        productID;

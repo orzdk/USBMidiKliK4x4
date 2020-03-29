@@ -3,7 +3,6 @@
 #define _MOD_SYSEXCFG_H_
 #pragma once
 
-
 void SysExInternalParse(uint8_t source, midiPacket_t *pk)
 {
     static unsigned sysExInternalMsgIdx = 0;
@@ -82,6 +81,7 @@ void ResetMidiRoutingRules(uint8_t mode)
     }
   }
 
+  /*
   if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_INTELLITHRU) {
     // "Intelligent thru" serial mode
     for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
@@ -97,7 +97,8 @@ void ResetMidiRoutingRules(uint8_t mode)
     for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
       EEPROM_Params.intelliThruJackInMsk = 0;
     }
-  }        
+  } 
+  */
 }
 
 uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff) 
@@ -137,13 +138,16 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
 
     // Function 0E - Intellithru midi routing rules
     // 02 Timeout
+    /*
     case 0x0E020000:
           *(++buff2) = 0X02;
           *(++buff2) = EEPROM_Params.intelliThruDelayPeriod;
           break;
-
+     */
+     
      // Function 0E - Intellithru midi routing rules
      // 03 Routing rules
+     /*
      case 0x0E030000:
           *(++buff2) = 0X03;
           *(++buff2) = sourcePort;
@@ -157,7 +161,7 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
      		  }
           if (c == 0 ) return 0;
           break;
-
+     */
 
      // Function 0F - USB/Serial Midi routing, filter & transformer rules
      // 03 Transformers
@@ -279,7 +283,7 @@ void SysexInternalDumpToStream(uint8_t dest)
   uint16_t l;
   const uint8_t dmCount = 14;
   uint32_t dumpMasks[dmCount] = {
-    0x0B000000, 0x0C000000, 0x0E020000, 0x0E030000,
+    0x0B000000, 0x0C000000, /* 0x0E020000, 0x0E030000, // Intellithru */
     0x0F030000, 0x0F030001,
     0x0F030100, 0x0F030101,
     0x0F020000, 0x0F020100, 
@@ -430,6 +434,7 @@ void SysExInternalProcess(uint8_t source)
     // F0 77 77 78 0E 03 01 0F 00 01 02 03 F7  <= Route Midi In Jack 2 to Jacks out 1,2,3,4 All msg
     // F0 77 77 78 0E 03 03 04 03 04 F7        <= Route Midi In Jack 4 to Jacks out 4,5, real time only
 
+    /*
     case 0x0E:
       if ( msgLen < 2 ) break;
 
@@ -465,6 +470,7 @@ void SysExInternalProcess(uint8_t source)
           // Filter is 4 bits
           if ( filterMsk > 0x0F  ) break;
 
+          
           // Disable Thru mode for this jack if no filter
           if ( filterMsk == 0 && msgLen ==4 ) {
             EEPROM_Params.intelliThruJackInMsk &= ~(1 << src);
@@ -485,6 +491,7 @@ void SysExInternalProcess(uint8_t source)
                 EEPROM_Params.midiRoutingRulesIntelliThru[src].jackOutTargetsMsk = msk;
               }
           }
+          
       }
       else  break;
 
@@ -496,6 +503,7 @@ void SysExInternalProcess(uint8_t source)
       if (B_IS_MASTER) I2C_SlavesRoutingSyncFromMaster();
 
       break;
+    */
 
     // ---------------------------------------------------------------------------
     // Function 0F - USB/Serial Midi midi routing rules

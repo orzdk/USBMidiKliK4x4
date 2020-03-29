@@ -138,7 +138,8 @@ int8_t I2C_ParseDataSync(uint8_t dataType,uint8_t arg1)
       I2C_SlaveSyncDoUpdate = true;
     }
   }
-  else
+  //else
+  /*
   // midiRoutingRulesIntelliThru
   if ( dataType == B_DTYPE_MIDI_ROUTING_RULES_INTELLITHRU )
   {
@@ -175,6 +176,7 @@ int8_t I2C_ParseDataSync(uint8_t dataType,uint8_t arg1)
       I2C_SlaveSyncDoUpdate = true;
     }
   }
+  */
   return 0;
 }
 
@@ -509,13 +511,13 @@ void I2C_SlavesRoutingSyncFromMaster()
   // Send midiRoutingRulesSerial -  midiRoutingRulesIntelliThru
   for ( uint8_t i=0 ; i != B_SERIAL_INTERFACE_MAX ; i ++ ) {
     I2C_SendData(B_DTYPE_MIDI_ROUTING_RULES_SERIAL, i, 0, (uint8_t *)&EEPROM_Params.midiRoutingRulesSerial[i], sizeof(midiRoutingRule_t));
-    I2C_SendData(B_DTYPE_MIDI_ROUTING_RULES_INTELLITHRU, i, 0, (uint8_t *)&EEPROM_Params.midiRoutingRulesIntelliThru[i], sizeof(midiRoutingRuleJack_t));
+    //I2C_SendData(B_DTYPE_MIDI_ROUTING_RULES_INTELLITHRU, i, 0, (uint8_t *)&EEPROM_Params.midiRoutingRulesIntelliThru[i], sizeof(midiRoutingRuleJack_t));
   }
 
-  I2C_SendData(B_DTYPE_MIDI_ROUTING_INTELLITHRU_JACKIN_MSK, 0, 0,(uint8_t *)&EEPROM_Params.intelliThruJackInMsk, sizeof(EEPROM_Params.intelliThruJackInMsk));
-  I2C_SendData(B_DTYPE_MIDI_ROUTING_INTELLITHRU_DELAY_PERIOD, 0, 0, (uint8_t *)&EEPROM_Params.intelliThruDelayPeriod, sizeof(EEPROM_Params.intelliThruDelayPeriod));
+  //I2C_SendData(B_DTYPE_MIDI_ROUTING_INTELLITHRU_JACKIN_MSK, 0, 0,(uint8_t *)&EEPROM_Params.intelliThruJackInMsk, sizeof(EEPROM_Params.intelliThruJackInMsk));
+  //I2C_SendData(B_DTYPE_MIDI_ROUTING_INTELLITHRU_DELAY_PERIOD, 0, 0, (uint8_t *)&EEPROM_Params.intelliThruDelayPeriod, sizeof(EEPROM_Params.intelliThruDelayPeriod));
 
-  I2C_SendCommand(0,   B_CMD_END_SYNC);
+  I2C_SendCommand(0, B_CMD_END_SYNC);
 
 }
 

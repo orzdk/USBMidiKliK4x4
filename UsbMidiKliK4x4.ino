@@ -130,6 +130,8 @@ volatile boolean I2C_SlaveSyncDoUpdate = false;
 RingBuffer<uint8_t,B_RING_BUFFER_PACKET_SIZE> I2C_QPacketsFromMaster;
 RingBuffer<uint8_t,B_RING_BUFFER_MPACKET_SIZE> I2C_QPacketsToMaster;
 
+RingBuffer<uint8_t,sizeof(midiPacket_t)> LoopbackPacketsQ;
+
 ///////////////////////////////////////////////////////////////////////////////
 //  CODE MODULES
 //-----------------------------------------------------------------------------
@@ -312,7 +314,9 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	// Check at the physical level (i.e. not the bus)
   if ( source == FROM_USB && sourcePort >= USBCABLE_INTERFACE_MAX ) return;
 	if ( source == FROM_SERIAL ) {
+    
     if ( sourcePort >= SERIAL_INTERFACE_MAX ) return;
+
     // If bus mode active, the local port# must be translated according
 		// to the device Id, before routing
     if (EEPROM_Params.I2C_BusModeState == B_ENABLED ) {
@@ -344,29 +348,30 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 
   // Save intelliThruActive and USBCx state as it could be changed in an interrupt
   // (when slave)
-  boolean ithru = intelliThruActive;
+  //boolean ithru = intelliThruActive;
 
   if (source == FROM_SERIAL ){
     // IntelliThru active ? If so, take the good routing rules
-    if ( ithru ) {
-			if ( ! EEPROM_Params.intelliThruJackInMsk ) return; // Double check.
-      serialOutTargets = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].jackOutTargetsMsk;
-      inFilters = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].filterMsk;
-    }
-    else {
+   //  if ( ithru ) {
+			// if ( ! EEPROM_Params.intelliThruJackInMsk ) return; // Double check.
+   //    serialOutTargets = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].jackOutTargetsMsk;
+   //    inFilters = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].filterMsk;
+   //  }
+   //  else {
       cableInTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].cableInTargetsMsk;
       serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
 
       if ((sts_fns(0).gateFn)(pk)) (sts_fns(0).modFn)(pk, sts_parms(0));
       if ((sts_fns(1).gateFn)(pk)) (sts_fns(1).modFn)(pk, sts_parms(1));
-    }   
+
+    //}   
   }
   else if (source == FROM_USB ) {
       cableInTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].cableInTargetsMsk;
       serialOutTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesCable[sourcePort].filterMsk;
-
+ 
       if ((cts_fns(0).gateFn)(pk)) (cts_fns(0).modFn)(pk, cts_parms(0));
       if ((cts_fns(1).gateFn)(pk)) (cts_fns(1).modFn)(pk, cts_parms(1));
   }
@@ -379,8 +384,19 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
   // ROUTING FROM ANY SOURCE PORT TO SERIAL TARGETS //////////////////////////
 	// A target match ?
   if ( *serialOutTargets) {
-				for (	uint16_t t=0; t != SERIAL_INTERFACE_COUNT ; t++)
+				for (	uint16_t t=0; t != 16; t++)
+
 					if ( (*serialOutTargets & ( 1 << t ) ) ) {
+
+                //Route virtual
+                if (t >= SERIAL_INTERFACE_COUNT){
+
+                    midiPacket_t pk2 = { .i = pk->i };
+                    pk2.packet[0] = ( t << 4 ) + cin;
+
+                    LoopbackPacketsQ.write(pk2,sizeof(pk2));
+                }
+                else
 								// Route via the bus
 								if (EEPROM_Params.I2C_BusModeState == B_ENABLED ) {
                      I2C_BusSerialSendMidiPacket(pk, t);
@@ -388,12 +404,12 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 								// Route to local serial if bus mode disabled
 								else SerialMidi_SendPacket(pk,t);
 					}
-	} // serialOutTargets
+	} /
 
   // Stop here if IntelliThru active (no USB active but maybe connected)
   // Intellithru is always activated by the master in bus mode!.
 
-  if ( ithru ) return;
+  //if ( ithru ) return;
 
   // Stop here if no USB connection (owned by the master).
   // If we are a slave, the master should have notified us
@@ -428,6 +444,7 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	    	}
 			}
 	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -543,10 +560,12 @@ void USBMidi_Process()
 		   midiUSBIdle = true;
   }
 
+  /*
 	if ( midiUSBIdle && !intelliThruActive && EEPROM_Params.intelliThruJackInMsk) {
 			intelliThruActive = true;
 			FlashAllLeds(0); // All leds when Midi intellithru mode active
 	}
+  */
 
 }
 
@@ -558,6 +577,13 @@ void SerialMidi_Process()
 	// LOCAL SERIAL JACK MIDI IN PROCESS
 	for ( uint8_t s = 0; s< SERIAL_INTERFACE_MAX  ; s++ )
 	{
+        //Do we have any loopback packages available
+        midiPacket_t pk;
+        if (LoopbackPacketsQ.available()) {
+          LoopbackPacketsQ.readBytes(pk,sizeof(midiPacket_t));
+          RoutePacketToTarget(FROM_LOOPBACK,&pk);
+        }
+
 				// Do we have any MIDI msg on Serial 1 to n ?
 				if ( serialHw[s]->available() ) {
 					 if ( midiSerial[s].parse( serialHw[s]->read() ) ) {
@@ -629,7 +655,7 @@ void setup()
 
     // MIDI MODE START HERE ==================================================
 
-    intelliThruDelayMillis = EEPROM_Params.intelliThruDelayPeriod * 15000;
+    //intelliThruDelayMillis = EEPROM_Params.intelliThruDelayPeriod * 15000;
 
     // MIDI SERIAL PORTS set Baud rates and parser inits
     // To compile with the 4 serial ports, you must use the right variant : STMF103RC

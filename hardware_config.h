@@ -47,7 +47,9 @@ __ __| |           |  /_) |     ___|             |           |
 #define _HARDWARE_CONFIG_H_
 #pragma once
 
+/*
 #ifdef MCU_STM32F103RC
+
   #warning "MIDITECH OR MCU_STM32F103RC HARDWARE DETECTED"
 
   // Comment the line below for a generic STM32F103RC
@@ -68,7 +70,8 @@ __ __| |           |  /_) |     ___|             |           |
      #define LED_CONNECT PC13
   #endif
 
-#else
+#else */
+
   #if defined(MCU_STM32F103C8) || defined(MCU_STM32F103CB)
     #warning "BLUEPILL HARDWARE DETECTED"
     #define HARDWARE_TYPE "BLUEPILL STMF103C8x"
@@ -78,7 +81,8 @@ __ __| |           |  /_) |     ___|             |           |
   #else
    #error "PLEASE CHOOSE STM32F103RC (4 serial ports) or STM32F103RC (3 serial ports) variants to compile ."
   #endif
-#endif
+
+//#endif
 
   #define USBCABLE_INTERFACE_MAX USB_MIDI_IO_PORT_NUM
 
