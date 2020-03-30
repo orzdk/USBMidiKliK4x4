@@ -296,7 +296,6 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 			sourcePort = GET_BUS_SERIALNO_FROM_LOCALDEV(EEPROM_Params.I2C_DeviceId,sourcePort);
     }
   }
-
   uint8_t cin   = pk->packet[0] & 0x0F ;
 
 	FLASH_LED_IN(sourcePort);
@@ -345,16 +344,32 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 
   // ROUTING FROM ANY SOURCE PORT TO SERIAL TARGETS //////////////////////////
 	// A target match ?
-  if ( *serialOutTargets) {
-				for (	uint16_t t=0; t != 16; t++)
-
+  if (*serialOutTargets) {
+			for (	uint16_t t=0; t != 15; t++) {
 					if ( (*serialOutTargets & ( 1 << t ) ) ) {
-            
-                //Route virtual
+                // Route Loopbacks -------------------------------------------------------------------
+                //
+                // Copy packet, change destination cable (sourceport), add to ringbuffer, 
+                // cease physical routing to the specific target, and continue to next 
+                //
+                //----------------------------------------------------------------------------------
+                //
+                // First time packet is here is because a physical Jack/Cable connection has specified 
+                // a virtual/echo jack (by definition all non-physically available jacks < 16) as a routing target. 
+                // In that case the source is changed from the actual source to the virtual jack, and packet put in ringbuffer.
+                //
+                // In SerialMidi_Process() the packet is then retrieved from the buffer and once again routed with RoutePacketToTarget() (this function),
+                // but this second time around, the packet looks like it comes from the virtual jack, and will use the routing table
+                // for the virtual jack, which tells the packet to route to another physical cable or jack, locally or on bus 
+                //
+                // The packet has already been sampled and the cable and serial targets has been identified from the sourceport,
+                // so the copy may not be nescessary. Serial MIDI does not use first byte, and USB (cable) targets are 
+                // set below in packet copies case there are any
+                //------------------------------------------------------------------------------------
                 if (t >= SERIAL_INTERFACE_COUNT){
-                    midiPacket_t pk2 = { .i = pk->i };
-                    pk2.packet[0] = ( t << 4 ) + cin;                    
-                    LoopbackPacketsQ.write(pk2.packet,sizeof(midiPacket_t));
+                    midiPacket_t pk2 = { .i = pk->i }; 
+                    pk2->packet[0] = (t << 4) + cin;                    
+                    LoopbackPacketsQ.write(pk2->packet,sizeof(midiPacket_t));
                 }
                 else
 								// Route via the bus
@@ -362,8 +377,9 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
                      I2C_BusSerialSendMidiPacket(pk, t);
 								}
 								// Route to local serial if bus mode disabled
-								else SerialMidi_SendPacket(pk,t);
+								else SerialMidi_SendPacket(pk,t);               
 					}
+			}
 	} 
 
   // Stop here if no USB connection (owned by the master).
@@ -515,9 +531,9 @@ void USBMidi_Process()
 void SerialMidi_Process()
 {
 	// LOCAL SERIAL JACK MIDI IN PROCESS
+
+  //Process loopback packages
   midiPacket_t pk;
-  
-  //Process loopbacked packages
   while (LoopbackPacketsQ.available()) {                     
     LoopbackPacketsQ.readBytes(pk.packet,sizeof(midiPacket_t));
     RoutePacketToTarget(FROM_SERIAL,&pk);

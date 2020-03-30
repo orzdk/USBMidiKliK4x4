@@ -740,12 +740,6 @@ void ShowConfigMenu()
 				Serial.println();
 				break;
 
-			// IntelliThru IN midi routing
-			case '6':
-				AskMidiRouting(INTELLITHRU_RULE);
-				Serial.println();
-				break;
-
 			// Enable Bus mode
 			 case '8':
 					if ( AskChoice("Enable bus mode","") == 'y' ) {
