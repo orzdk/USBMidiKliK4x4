@@ -47,46 +47,19 @@ __ __| |           |  /_) |     ___|             |           |
 #define _HARDWARE_CONFIG_H_
 #pragma once
 
-/*
-#ifdef MCU_STM32F103RC
+#if defined(MCU_STM32F103C8) || defined(MCU_STM32F103CB)
+  #warning "BLUEPILL HARDWARE DETECTED"
+  #define HARDWARE_TYPE "BLUEPILL STMF103C8x"
+  #define SERIAL_INTERFACE_MAX  3
+  #define SERIALS_PLIST &Serial1,&Serial2,&Serial3
+  #define LED_CONNECT PC13
+#else
+ #error "PLEASE CHOOSE STM32F103RC (4 serial ports) or STM32F103RC (3 serial ports) variants to compile ."
+#endif
 
-  #warning "MIDITECH OR MCU_STM32F103RC HARDWARE DETECTED"
+#define USBCABLE_INTERFACE_MAX USB_MIDI_IO_PORT_NUM
 
-  // Comment the line below for a generic STM32F103RC
-  // This drives the DISC pin for USB with the Miditech 4x4
-  // and the connect LED pin #.
-  // Activated by default.
-  #define HAS_MIDITECH_HARDWARE
-
-  #define SERIAL_INTERFACE_MAX  4
-  #define SERIALS_PLIST &Serial1,&Serial2,&Serial3,&Serial4
-  #ifdef HAS_MIDITECH_HARDWARE
-     #warning "MIDITECH4X4 STM32F103RC HARDWARE DETECTED"
-     #define HARDWARE_TYPE "MIDITECH4x4 STM32F103RC"
-     #define LED_CONNECT PC9
-  #else
-     #warning "STM32F103RC HARDWARE DETECTED"
-     #define HARDWARE_TYPE "STM32F103RC"
-     #define LED_CONNECT PC13
-  #endif
-
-#else */
-
-  #if defined(MCU_STM32F103C8) || defined(MCU_STM32F103CB)
-    #warning "BLUEPILL HARDWARE DETECTED"
-    #define HARDWARE_TYPE "BLUEPILL STMF103C8x"
-    #define SERIAL_INTERFACE_MAX  3
-    #define SERIALS_PLIST &Serial1,&Serial2,&Serial3
-    #define LED_CONNECT PC13
-  #else
-   #error "PLEASE CHOOSE STM32F103RC (4 serial ports) or STM32F103RC (3 serial ports) variants to compile ."
-  #endif
-
-//#endif
-
-  #define USBCABLE_INTERFACE_MAX USB_MIDI_IO_PORT_NUM
-
-  // USBDM (USB -) PIN
-  #define PIN_USBDM PA11
+// USBDM (USB -) PIN
+#define PIN_USBDM PA11
 
 #endif

@@ -138,45 +138,6 @@ int8_t I2C_ParseDataSync(uint8_t dataType,uint8_t arg1)
       I2C_SlaveSyncDoUpdate = true;
     }
   }
-  //else
-  /*
-  // midiRoutingRulesIntelliThru
-  if ( dataType == B_DTYPE_MIDI_ROUTING_RULES_INTELLITHRU )
-  {
-      if (Wire.available() != sizeof(midiRoutingRuleJack_t)) return -1;
-      if (arg1 >= B_SERIAL_INTERFACE_MAX)  return -1;
-      midiRoutingRuleJack_t *mr;
-      midiRoutingRuleJack_t r;
-      Wire.readBytes((uint8_t *)&r,sizeof(midiRoutingRuleJack_t));
-      mr = &EEPROM_Params.midiRoutingRulesIntelliThru[arg1];
-      if (memcmp((void*)mr,(void*)&r,sizeof(midiRoutingRuleJack_t)))
-      {
-        memcpy((void*)mr,(void*)&r,sizeof(midiRoutingRuleJack_t));
-        I2C_SlaveSyncDoUpdate = true;
-      }
-  }
-  else
-  // intelliThruJackInMsk
-  if (dataType == B_DTYPE_MIDI_ROUTING_INTELLITHRU_JACKIN_MSK) {
-    if (Wire.available() != sizeof(uint16_t)) return -1;
-    uint16_t jmsk;
-    Wire.readBytes((uint8*)&jmsk,sizeof(uint16_t));
-    if ( EEPROM_Params.intelliThruJackInMsk != jmsk) {
-        EEPROM_Params.intelliThruJackInMsk = jmsk;
-        I2C_SlaveSyncDoUpdate = true;
-    }
-  }
-  else
-  // intelliThruDelayPeriod
-  if (dataType == B_DTYPE_MIDI_ROUTING_INTELLITHRU_DELAY_PERIOD) {
-    if (Wire.available() != sizeof(uint8_t) ) return -1;
-    uint8_t dp = Wire.read();
-    if ( EEPROM_Params.intelliThruDelayPeriod != dp) {
-      EEPROM_Params.intelliThruDelayPeriod = dp;
-      I2C_SlaveSyncDoUpdate = true;
-    }
-  }
-  */
   return 0;
 }
 
@@ -204,14 +165,6 @@ void I2C_ParseImmediateCmd() {
 
     case B_CMD_USBCX_AWAKE:
       midiUSBIdle = false;
-      break;
-
-    case B_CMD_INTELLITHRU_ENABLED:
-      intelliThruActive = true;
-      break;
-
-    case B_CMD_INTELLITHRU_DISABLED:
-      intelliThruActive = false;
       break;
 
     case B_CMD_HARDWARE_RESET:
@@ -511,11 +464,7 @@ void I2C_SlavesRoutingSyncFromMaster()
   // Send midiRoutingRulesSerial -  midiRoutingRulesIntelliThru
   for ( uint8_t i=0 ; i != B_SERIAL_INTERFACE_MAX ; i ++ ) {
     I2C_SendData(B_DTYPE_MIDI_ROUTING_RULES_SERIAL, i, 0, (uint8_t *)&EEPROM_Params.midiRoutingRulesSerial[i], sizeof(midiRoutingRule_t));
-    //I2C_SendData(B_DTYPE_MIDI_ROUTING_RULES_INTELLITHRU, i, 0, (uint8_t *)&EEPROM_Params.midiRoutingRulesIntelliThru[i], sizeof(midiRoutingRuleJack_t));
   }
-
-  //I2C_SendData(B_DTYPE_MIDI_ROUTING_INTELLITHRU_JACKIN_MSK, 0, 0,(uint8_t *)&EEPROM_Params.intelliThruJackInMsk, sizeof(EEPROM_Params.intelliThruJackInMsk));
-  //I2C_SendData(B_DTYPE_MIDI_ROUTING_INTELLITHRU_DELAY_PERIOD, 0, 0, (uint8_t *)&EEPROM_Params.intelliThruDelayPeriod, sizeof(EEPROM_Params.intelliThruDelayPeriod));
 
   I2C_SendCommand(0, B_CMD_END_SYNC);
 
@@ -528,10 +477,9 @@ void I2C_ProcessMaster ()
 {
   masterMidiPacket_t mpk;
 
-  // Broadcast slaves of USB midi state & intellithru mode
+  // Broadcast slaves of USB midi state
   I2C_SendCommand(0, midiUSBCx ?  B_CMD_USBCX_AVAILABLE:B_CMD_USBCX_UNAVAILABLE);
   I2C_SendCommand(0, midiUSBIdle ?  B_CMD_USBCX_SLEEP:B_CMD_USBCX_AWAKE );
-  I2C_SendCommand(0, intelliThruActive ?  B_CMD_INTELLITHRU_ENABLED:B_CMD_INTELLITHRU_DISABLED ) ;
 
   // Notify slaves of debug mode. The debug mode of the slave is overwriten
   #ifdef DEBUG_MODE
@@ -549,12 +497,13 @@ void I2C_ProcessMaster ()
           uint8_t targetPort = mpk.mpk.pk.packet[0] >> 4;
           I2C_BusSerialSendMidiPacket(&(mpk.mpk.pk), targetPort );
          // Send to a cable IN only if USB is available on the master
-       } else if ( mpk.mpk.dest == TO_USB )
-        //&& midiUSBCx && !midiUSBdle && !intelliThruActive)
+       } 
+       else 
+       if ( mpk.mpk.dest == TO_USB )
        {
           MidiUSB.writePacket(&(mpk.mpk.pk.i));
        }
-      // else ignore that packet....
+
 
 	} // for
 }
@@ -623,7 +572,6 @@ DEBUG_ASSERT(I2C_MasterReady,"Master ready","");
 DEBUG_ASSERT(midiUSBCx,"USB Midi Cx alive","");
 DEBUG_ASSERT(midiUSBCx,"USB Midi Cx alive","");
 DEBUG_ASSERT(midiUSBIdle,"USB Midi idle","");
-DEBUG_ASSERT(intelliThruActive,"Intellithru active","");
 DEBUG_END
 
 }

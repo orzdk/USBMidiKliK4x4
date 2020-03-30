@@ -72,25 +72,6 @@ HardwareSerial * serialHw[SERIAL_INTERFACE_MAX] = {SERIALS_PLIST};
 PulseOutManager flashLEDManager;
 PulseOut* flashLED_CONNECT = flashLEDManager.factory(LED_CONNECT,LED_PULSE_MILLIS,LOW);
 
-#ifdef HAS_MIDITECH_HARDWARE
-  // LED must be declared in the same order as hardware serials
-  #define LEDS_MIDI
-  PulseOut* flashLED_IN[SERIAL_INTERFACE_MAX] =
-	{
-    flashLEDManager.factory(D4,LED_PULSE_MILLIS,LOW),
-    flashLEDManager.factory(D5,LED_PULSE_MILLIS,LOW),
-    flashLEDManager.factory(D6,LED_PULSE_MILLIS,LOW),
-    flashLEDManager.factory(D7,LED_PULSE_MILLIS,LOW)
-  };
-  PulseOut* flashLED_OUT[SERIAL_INTERFACE_MAX] =
-	{
-    flashLEDManager.factory(D36,LED_PULSE_MILLIS,LOW),
-    flashLEDManager.factory(D37,LED_PULSE_MILLIS,LOW),
-    flashLEDManager.factory(D16,LED_PULSE_MILLIS,LOW),
-    flashLEDManager.factory(D17,LED_PULSE_MILLIS,LOW)
-  };
-#endif
-
 // Timer used to signal I2C events every 300 ms
 PulseOut I2C_LedTimer(0xFF,500);
 
@@ -108,11 +89,6 @@ uint8_t sysExInternalHeader[] = {SYSEX_INTERNAL_HEADER} ;
 uint8_t sysExInternalIdentityRqReply[] = {SYSEX_INTERNAL_IDENTITY_RQ_REPLY};
 uint8_t sysExInternalBuffer[SYSEX_INTERNAL_BUFF_SIZE] ;
 
-
-// Intelligent midi thru mode
-volatile bool intelliThruActive = false;
-unsigned long intelliThruDelayMillis = DEFAULT_INTELLIGENT_MIDI_THRU_DELAY_PERIOD * 15000;
-
 // Bus Mode globals
 uint8_t I2C_DeviceIdActive[B_MAX_NB_DEVICE-1]; // Minus the master
 uint8_t I2C_DeviceActiveCount=0;
@@ -129,8 +105,7 @@ volatile boolean I2C_SlaveSyncDoUpdate = false;
 // Volatile by default and RESERVED TO SLAVE
 RingBuffer<uint8_t,B_RING_BUFFER_PACKET_SIZE> I2C_QPacketsFromMaster;
 RingBuffer<uint8_t,B_RING_BUFFER_MPACKET_SIZE> I2C_QPacketsToMaster;
-
-RingBuffer<uint8_t,sizeof(midiPacket_t)> LoopbackPacketsQ;
+RingBuffer<uint8_t,B_RING_BUFFER_PACKET_SIZE> LoopbackPacketsQ;
 
 ///////////////////////////////////////////////////////////////////////////////
 //  CODE MODULES
@@ -314,12 +289,10 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	// Check at the physical level (i.e. not the bus)
   if ( source == FROM_USB && sourcePort >= USBCABLE_INTERFACE_MAX ) return;
 	if ( source == FROM_SERIAL ) {
-    
-    if ( sourcePort >= SERIAL_INTERFACE_MAX ) return;
-
+    // if ( sourcePort >= SERIAL_INTERFACE_MAX ) return;
     // If bus mode active, the local port# must be translated according
 		// to the device Id, before routing
-    if (EEPROM_Params.I2C_BusModeState == B_ENABLED ) {
+    if (EEPROM_Params.I2C_BusModeState == B_ENABLED && sourcePort < SERIAL_INTERFACE_MAX ) {
 			sourcePort = GET_BUS_SERIALNO_FROM_LOCALDEV(EEPROM_Params.I2C_DeviceId,sourcePort);
     }
   }
@@ -346,26 +319,15 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 	uint16_t *serialOutTargets ;
 	uint8_t *inFilters ;
 
-  // Save intelliThruActive and USBCx state as it could be changed in an interrupt
-  // (when slave)
-  //boolean ithru = intelliThruActive;
-
   if (source == FROM_SERIAL ){
-    // IntelliThru active ? If so, take the good routing rules
-   //  if ( ithru ) {
-			// if ( ! EEPROM_Params.intelliThruJackInMsk ) return; // Double check.
-   //    serialOutTargets = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].jackOutTargetsMsk;
-   //    inFilters = &EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].filterMsk;
-   //  }
-   //  else {
+
       cableInTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].cableInTargetsMsk;
       serialOutTargets = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].jackOutTargetsMsk;
       inFilters = &EEPROM_Params.midiRoutingRulesSerial[sourcePort].filterMsk;
 
       if ((sts_fns(0).gateFn)(pk)) (sts_fns(0).modFn)(pk, sts_parms(0));
       if ((sts_fns(1).gateFn)(pk)) (sts_fns(1).modFn)(pk, sts_parms(1));
-
-    //}   
+  
   }
   else if (source == FROM_USB ) {
       cableInTargets = &EEPROM_Params.midiRoutingRulesCable[sourcePort].cableInTargetsMsk;
@@ -387,14 +349,12 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 				for (	uint16_t t=0; t != 16; t++)
 
 					if ( (*serialOutTargets & ( 1 << t ) ) ) {
-
+            
                 //Route virtual
                 if (t >= SERIAL_INTERFACE_COUNT){
-
                     midiPacket_t pk2 = { .i = pk->i };
-                    pk2.packet[0] = ( t << 4 ) + cin;
-
-                    LoopbackPacketsQ.write(pk2,sizeof(pk2));
+                    pk2.packet[0] = ( t << 4 ) + cin;                    
+                    LoopbackPacketsQ.write(pk2.packet,sizeof(midiPacket_t));
                 }
                 else
 								// Route via the bus
@@ -404,12 +364,7 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
 								// Route to local serial if bus mode disabled
 								else SerialMidi_SendPacket(pk,t);
 					}
-	} /
-
-  // Stop here if IntelliThru active (no USB active but maybe connected)
-  // Intellithru is always activated by the master in bus mode!.
-
-  //if ( ithru ) return;
+	} 
 
   // Stop here if no USB connection (owned by the master).
   // If we are a slave, the master should have notified us
@@ -483,12 +438,6 @@ void CheckBootMode()
       EEPROM_Params.nextBootMode = bootModeMidi;
       EEPROM_ParamsSave();
 
-			#ifdef HAS_MIDITECH_HARDWARE
-				// Assert DISC PIN (PA8 usually for Miditech) to enable USB
-				gpio_set_mode(PIN_MAP[PA8].gpio_device, PIN_MAP[PA8].gpio_bit, GPIO_OUTPUT_PP);
-				gpio_write_bit(PIN_MAP[PA8].gpio_device, PIN_MAP[PA8].gpio_bit, 1);
-			#endif
-
 			// start USB serial
 			Serial.begin(115200);
 			delay(500);
@@ -539,7 +488,6 @@ void USBMidi_Process()
 		if ( MidiUSB.available() ) {
 			midiUSBLastPacketMillis = millis()  ;
 			midiUSBIdle = false;
-			intelliThruActive = false;
 
 			// Read a Midi USB packet .
 			if ( !isSerialBusy ) {
@@ -549,9 +497,8 @@ void USBMidi_Process()
 			} else {
 					isSerialBusy = false ;
 			}
-		} else
-		if (!midiUSBIdle && millis() > ( midiUSBLastPacketMillis + intelliThruDelayMillis ) )
-				midiUSBIdle = true;
+		}
+    
 	}
 	// Are we physically connected to USB
 	else {
@@ -559,13 +506,6 @@ void USBMidi_Process()
        midiUSBCx = false;
 		   midiUSBIdle = true;
   }
-
-  /*
-	if ( midiUSBIdle && !intelliThruActive && EEPROM_Params.intelliThruJackInMsk) {
-			intelliThruActive = true;
-			FlashAllLeds(0); // All leds when Midi intellithru mode active
-	}
-  */
 
 }
 
@@ -575,17 +515,19 @@ void USBMidi_Process()
 void SerialMidi_Process()
 {
 	// LOCAL SERIAL JACK MIDI IN PROCESS
-	for ( uint8_t s = 0; s< SERIAL_INTERFACE_MAX  ; s++ )
+  midiPacket_t pk;
+  
+  //Process loopbacked packages
+  while (LoopbackPacketsQ.available()) {                     
+    LoopbackPacketsQ.readBytes(pk.packet,sizeof(midiPacket_t));
+    RoutePacketToTarget(FROM_SERIAL,&pk);
+  }
+  
+	for ( uint8_t s = 0; s < SERIAL_INTERFACE_MAX; s++ )
 	{
-        //Do we have any loopback packages available
-        midiPacket_t pk;
-        if (LoopbackPacketsQ.available()) {
-          LoopbackPacketsQ.readBytes(pk,sizeof(midiPacket_t));
-          RoutePacketToTarget(FROM_LOOPBACK,&pk);
-        }
-
-				// Do we have any MIDI msg on Serial 1 to n ?
+   			// Do we have any MIDI msg on Serial 1 to n ?
 				if ( serialHw[s]->available() ) {
+
 					 if ( midiSerial[s].parse( serialHw[s]->read() ) ) {
 								// We manage sysEx "on the fly". Clean end of a sysexe msg ?
 								if ( midiSerial[s].getMidiMsgType() == midiXparser::sysExMsgTypeMsk )
@@ -602,10 +544,11 @@ void SerialMidi_Process()
 					 if ( midiSerial[s].isSysExError() )
 						 SerialMidi_RouteSysEx(s, &midiSerial[s]) ;
 					 else
-					 // Check if a SYSEX mode active and send bytes on the fly.
+           // Check if a SYSEX mode active and send bytes on the fly.
 					 if ( midiSerial[s].isSysExMode() && midiSerial[s].isByteCaptured() ) {
 							SerialMidi_RouteSysEx(s, &midiSerial[s]) ;
 					 }
+
 				}
 
 				// Manage Serial contention vs USB
@@ -654,8 +597,6 @@ void setup()
 		CheckBootMode();
 
     // MIDI MODE START HERE ==================================================
-
-    //intelliThruDelayMillis = EEPROM_Params.intelliThruDelayPeriod * 15000;
 
     // MIDI SERIAL PORTS set Baud rates and parser inits
     // To compile with the 4 serial ports, you must use the right variant : STMF103RC

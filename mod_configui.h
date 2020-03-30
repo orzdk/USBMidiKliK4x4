@@ -255,18 +255,11 @@ void ShowMidiRoutingLine(uint8_t port,uint8_t ruleType, void *anyRule)
 		cableInTargetsMsk = ((midiRoutingRule_t *)anyRule)->cableInTargetsMsk;
 		jackOutTargetsMsk = ((midiRoutingRule_t *)anyRule)->jackOutTargetsMsk;
 	}	
-	/*
-	else if (ruleType == INTELLITHRU_RULE ) {
-			maxPorts = SERIAL_INTERFACE_COUNT;
-			filterMsk = ((midiRoutingRuleJack_t *)anyRule)->filterMsk;
-			jackOutTargetsMsk = ((midiRoutingRuleJack_t *)anyRule)->jackOutTargetsMsk;
-	}*/
     else return;
 
 
 	// No display if port is not exsiting or not concerned by IntelliThru
 	if ( port >= maxPorts ) return;
-	//if (ruleType == INTELLITHRU_RULE && !(EEPROM_Params.intelliThruJackInMsk & (1<< port)) ) return;
 
 	// print a full new line
 	Serial.print("|");
@@ -361,14 +354,6 @@ void ShowMidiRouting(uint8_t ruleType)
 
 	Serial.println();
 
-  /*
-	if (ruleType == INTELLITHRU_RULE) {
-		Serial.print("IntelliThru mode is ");
-		Serial.println(EEPROM_Params.intelliThruJackInMsk ? "active." : "inactive.");
-		Serial.print("USB sleeping detection time :");
-    Serial.print(EEPROM_Params.intelliThruDelayPeriod*15);Serial.println("s");
-	}
-  */
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -506,32 +491,7 @@ void AskMidiRouting(uint8_t ruleType)
 
 	if (choice > 0) {
 		uint8_t port =  choice - 1;
-		Serial.println();
-
-    /*
-		if (ruleType == INTELLITHRU_RULE ) {
-			Serial.print("Jack #");
-			Serial.print( port+1 > 9 ? "":"0");Serial.print(port+1);
-			if ( AskChoice(" : enable thru mode routing","") != 'y') {
-				Serial.println();
-				Serial.print("Jack IN #");Serial.print(port+1);
-				Serial.println(" disabled.");
-				EEPROM_Params.intelliThruJackInMsk &= ~(1 << port);
-				return;
-			}
-			EEPROM_Params.intelliThruJackInMsk |= (1 << port);
-			Serial.println();
-			if ( EEPROM_Params.midiRoutingRulesIntelliThru[port].jackOutTargetsMsk )
-			{
-				if ( AskChoice("Keep existing Midi routing & filtering","") == 'y') {
-					Serial.println();
-					return;
-				}
-				Serial.println();
-			}
-			Serial.println();
-		}
-    */
+		Serial.println();  
     
 		// Filters
 		uint8_t flt = AskMidiFilter(ruleType,port);
@@ -568,13 +528,6 @@ void AskMidiRouting(uint8_t ruleType)
 			EEPROM_Params.midiRoutingRulesSerial[port].cableInTargetsMsk = cTargets;
 			EEPROM_Params.midiRoutingRulesSerial[port].jackOutTargetsMsk = jTargets ;
 		} 
-		/*
-		else
-		if (ruleType == INTELLITHRU_RULE ) {
-			EEPROM_Params.midiRoutingRulesIntelliThru[port].filterMsk = flt;
-			EEPROM_Params.midiRoutingRulesIntelliThru[port].jackOutTargetsMsk = jTargets ;
-		}
-    */
 
 	}
 }
@@ -590,9 +543,9 @@ uint8_t AskMidiFilter(uint8_t ruleType, uint8_t port)
 
 	 if (ruleType == USBCABLE_RULE ) {
 			 Serial.print("cable out #");
-	 }
-	 else
-	 if (ruleType == SERIAL_RULE ||  ruleType == INTELLITHRU_RULE  ) {
+	}
+	else
+	if (ruleType == SERIAL_RULE ) {
 			 Serial.print("MIDI in jack #");
 	 }
 	 else return 0;
@@ -793,23 +746,7 @@ void ShowConfigMenu()
 				Serial.println();
 				break;
 
-			// USB Timeout <number of 15s periods 1-127>
-      /*
-			case '7':
-				Serial.println("Nb of 15s periods (001-127 / 000 to exit) :");
-				i = AsknNumber(3);
-				if (i == 0 || i >127 )
-					Serial.println(". Error. No change made.");
-				else {
-					EEPROM_Params.intelliThruDelayPeriod = i;
-					Serial.print(" <= Delay set to ");Serial.print(i*15);Serial.println("s");
-				}
-				Serial.println();
-				showMenu = false;
-				break;
-       */
-       
-				// Enable Bus mode
+			// Enable Bus mode
 			 case '8':
 					if ( AskChoice("Enable bus mode","") == 'y' ) {
 						EEPROM_Params.I2C_BusModeState = B_ENABLED;
