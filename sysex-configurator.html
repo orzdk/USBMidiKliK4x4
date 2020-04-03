@@ -1,40 +1,18 @@
-<script
-  src="https://code.jquery.com/jquery-3.4.1.js"
-  integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU="
-  crossorigin="anonymous">
-</script>
 
-<style>
-	*{
-		font-family: arial;
-		font-size: 11px
-	}
+<!doctype html>
+<html>
+<head>
+	<title>REV2 Tool</title>
+	<script src="./chart.bundle.js"></script>
+	<script src="https://code.jquery.com/jquery-3.4.1.js" integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU=" crossorigin="anonymous"></script>
+	<script src="https://cdn.jsdelivr.net/npm/webmidi@2.0.0"></script>
+	<link rel='stylesheet' href='http://fonts.googleapis.com/css?family=Open+Sans:700,600,800,400' type='text/css'>
+	<link rel="stylesheet" href="./midi.css" media="screen">
+</head>
 
-	td{
-		text-align: left;vertical-align: top;
-	}
+<body>
 
-	.sysexresult{
-		width: 250px;
-		padding: 200px;
-		margin: 0,auto;
-		font-size: 30px;
-		text-align: center;
-		vertical-align: middle;
-		/*border: 1px dashed black;*/
-	}
-
-	label{
-        user-select: none;
-        -moz-user-select: none;
-        -khtml-user-select: none;
-        -webkit-user-select: none;
-        -o-user-select: none;
-	} 
-
-</style>
-
-<h1 style="font-size: 30px">USBMidiKliK Sysex Configurator<h1>
+<h1 style="font-size: 30px">USBMidiKliK Sysex Configurator</h1>
 <hr>
 
 <table><tr><td>
@@ -75,8 +53,6 @@ Fn 0F - JACK/USB Midi routing rules</label>
 
 <br>
 <br>
-
-
 
 <div class="page" id="dt05" style="display: none">dt05 - not implemented</div>
 <div class="page" id="dt06" style="display: none">dt06 - not implemented</div>
@@ -221,38 +197,11 @@ F0 77 77 78 01 0F
 </div>
 
 
-</td></tr></table>
+</td></tr>
+</table>
 
-<script type="text/javascript">
-	
-	var buildString = function(){
-		var a = "";
-			
-		for (i=0;i<16;i++){
+<script type="text/javascript" src="sysex-config.js"></script>
 
-			if($("#t" + i).is(':checked')){
-				console.log("t" + i);
-				a += i + ",";
-			}
-		}
+</body>
+</html>
 
-		console.log(a);
-
-	}	
-
-	$(document).ready(function(){
-		
-		$("input[name='funcradio']:radio").on("change", function() { 
-		    selected_value = $("input[name='funcradio']:checked").val();
-		    console.log(selected_value);
-		    $(".page").hide();
-		    $("#dt" + selected_value).show();
-		});
-
-		$(".control").on("click", function(){
-			buildString();
-		});
-
-	});
-
-</script>
