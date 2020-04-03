@@ -62,23 +62,22 @@ void ResetMidiRoutingRules(uint8_t mode)
 
   if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_MIDIUSB) {
 
-    for (uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {
+    for ( uint8_t i = 0 ; i != USBCABLE_INTERFACE_MAX ; i++ ) {
 
       // Cables
-      cts_routing.filterMsk = midiXparser::allMsgTypeMsk;
-      cts_routing.cableInTargetsMsk = 0;
-      cts_routing.jackOutTargetsMsk = 0; //1 << i;
-      EEPROM_Params.transformersCable[i] = {0};
+      EEPROM_Params.midiRoutingRulesCable[i].filterMsk = midiXparser::allMsgTypeMsk;
+      EEPROM_Params.midiRoutingRulesCable[i].cableInTargetsMsk = 0 ;
+      EEPROM_Params.midiRoutingRulesCable[i].jackOutTargetsMsk = 1 << i ;
     }
-  
-    for ( uint8_t i = 0 ; i != SERIAL_INTERFACE_MAX ; i++ ) {
+
+    for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
 
       // Jack serial
-      sts_routing.filterMsk = midiXparser::allMsgTypeMsk;      
-      sts_routing.cableInTargetsMsk = 0; //1 << i;
-      sts_routing.jackOutTargetsMsk = 0;
-      EEPROM_Params.transformersSerial[i] = {0};
+      EEPROM_Params.midiRoutingRulesSerial[i].filterMsk = midiXparser::allMsgTypeMsk;
+      EEPROM_Params.midiRoutingRulesSerial[i].cableInTargetsMsk = 1 << i ;
+      EEPROM_Params.midiRoutingRulesSerial[i].jackOutTargetsMsk = 0  ;
     }
+
   }
 
 }
@@ -237,13 +236,14 @@ void SysexInternalDumpPortToStream(uint8_t dest, uint32_t dumpMask, uint8_t port
 void SysexInternalDumpToStream(uint8_t dest) 
 {
   uint16_t l;
-  const uint8_t dmCount = 14;
+  const uint8_t dmCount = 12;
   uint32_t dumpMasks[dmCount] = {
     0x0B000000, 0x0C000000, 
     0x0F030000, 0x0F030001,
     0x0F030100, 0x0F030101,
     0x0F020000, 0x0F020100, 
-    0x0F010000, 0x0F010001, 0x0F010100, 0x0F010101
+    0x0F010000, 0x0F010001, 
+    0x0F010100, 0x0F010101
   };
 
   for (uint8_t dm=0;dm<dmCount;dm++){
@@ -253,7 +253,7 @@ void SysexInternalDumpToStream(uint8_t dest)
     l = SysexInternalDumpConf(dumpMasks[dm], port, sysExInternalBuffer);
     sysexDump(dest,l);
      
-    if (dumpMasks[dm] >= 0x0E030000)
+    if (dumpMasks[dm] >= 0x0F030000)
     for (port=1; port!=16 ;port++) {
         l = SysexInternalDumpConf(dumpMasks[dm], port, sysExInternalBuffer);
         sysexDump(dest,l);
@@ -475,7 +475,7 @@ void SysExInternalProcess(uint8_t source)
         if (srcType  == 0 && src >= USBCABLE_INTERFACE_MAX ) break;
         if (srcType  == 1 && src >= SERIAL_INTERFACE_C_MAX ) break;
         if (dstType  == 0 &&  msgLen > (USBCABLE_INTERFACE_MAX + 5) )  break;
-        if (dstType  == 1 &&  msgLen > (SERIAL_INTERFACE_MAX + 5) )  break;
+        if (dstType  == 1 &&  msgLen > (SERIAL_INTERFACE_C_MAX + 5) )  break;
 
         // Compute mask from the port list
         uint16_t msk = 0;

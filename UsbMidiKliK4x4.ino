@@ -368,8 +368,8 @@ void SerialMidi_SendPacket(midiPacket_t *pk, uint8_t serialNo)
                 //------------------------------------------------------------------------------------
                 if (t >= SERIAL_INTERFACE_COUNT){
                     midiPacket_t pk2 = { .i = pk->i }; 
-                    pk2->packet[0] = (t << 4) + cin;                    
-                    LoopbackPacketsQ.write(pk2->packet,sizeof(midiPacket_t));
+                    pk2.packet[0] = (t << 4) + cin;                    
+                    LoopbackPacketsQ.write(pk2.packet,sizeof(midiPacket_t));
                 }
                 else
 								// Route via the bus
@@ -532,7 +532,7 @@ void SerialMidi_Process()
 {
 	// LOCAL SERIAL JACK MIDI IN PROCESS
 
-  //Process loopback packages
+//  Process loopback packages
   midiPacket_t pk;
   while (LoopbackPacketsQ.available()) {                     
     LoopbackPacketsQ.readBytes(pk.packet,sizeof(midiPacket_t));
