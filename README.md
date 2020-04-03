@@ -78,7 +78,7 @@ Sysex messages have the following format, and ARE ONLY INTERPRETED ON CABLE 0 OR
 The "F0 77 77 78" is the specific sysex header for USBMidiKlik4x4. Know that it is a totally unofficial header.
 You will find the sysex V2 documentation in the wiki :
 
-https://github.com/TheKikGen/USBMidiKliK4x4/wiki/USBMidiKliK4x4-V2-SYSEX-documentation
+https://github.com/TheKikGen/USBMidiKliK4x4/wiki/UMK4x4-V2.0-SYSEX-documentation
 
 The second way is to activate the configuration menu on the serial port with the following sysex :
 
@@ -118,7 +118,7 @@ The following menu should appear after connecting to the right serial USB port ,
 I'm currently working on a powerfull new feature allowing to modify an incoming midi message via a "pipeline". A pipeline can be seen as a chain of transformation functions, e.g.,  transpose notes, split, map channel to another, map CC to another, etc....  
 The RC1 will be delivered around end of March.  Have a look at the MIDITRANS branch.
 
-<img width="450" border="0" src="https://github.com/TheKikGen/USBMidiKliK4x4/wiki/pipelines/pipelines1.jpg"  />
+<img  border="0" src="https://github.com/TheKikGen/USBMidiKliK4x4/wiki/pipelines/pipelines1.jpg"  />
 
 ## Build 2.191207.1818 is ready (07 December 2019) ###
 
