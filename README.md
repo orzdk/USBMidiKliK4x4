@@ -38,6 +38,7 @@ The current version V2 supports full USB midi until 16xIN , 16XOUT plus routing 
 + Sysex to switch to configuration menu serial mode instead of MIDI USB
 + USB device ProductStringName, Vendor and Product Ids can be changed easily
 + STANDALONE Mode :  can be used as a standalone MIDI routing box without connecting any host to the USB
++ Intellithru mode : possibility to define a second level of routing rules when USB is idle or unavailable
 + Stackable :  several interfaces can be "stacked" in bus mode , to get 6x6, 9x9, 15x15 physical midi ports, 16x16 USB.
 
 <img  border="0" src="https://github.com/TheKikGen/USBMidiKliK4x4/blob/master/doc/USBMIDIKLIK-I2C-BUS-MODE.jpg?raw=true"  />

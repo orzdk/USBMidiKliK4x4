@@ -80,6 +80,24 @@ void ResetMidiRoutingRules(uint8_t mode)
 
   }
 
+  /*
+  if (mode == ROUTING_RESET_ALL || mode == ROUTING_RESET_INTELLITHRU) {
+    // "Intelligent thru" serial mode
+    for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
+      EEPROM_Params.midiRoutingRulesIntelliThru[i].filterMsk = midiXparser::allMsgTypeMsk;
+      EEPROM_Params.midiRoutingRulesIntelliThru[i].jackOutTargetsMsk = 0B1111 ;
+    }
+    EEPROM_Params.intelliThruJackInMsk = 0;
+    EEPROM_Params.intelliThruDelayPeriod = DEFAULT_INTELLIGENT_MIDI_THRU_DELAY_PERIOD ;
+  }
+  
+  // Disable "Intelligent thru" serial mode
+  if (mode == ROUTING_INTELLITHRU_OFF ) {
+    for ( uint8_t i = 0 ; i != B_SERIAL_INTERFACE_MAX ; i++ ) {
+      EEPROM_Params.intelliThruJackInMsk = 0;
+    }
+  } 
+  */
 }
 
 uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff) 
@@ -117,6 +135,32 @@ uint8_t SysexInternalDumpConf(uint32_t fnId, uint8_t sourcePort,uint8_t *buff)
           *(++buff2) = (EEPROM_Params.productID & 0x000F) ;
           break;
 
+    // Function 0E - Intellithru midi routing rules
+    // 02 Timeout
+    /*
+    case 0x0E020000:
+          *(++buff2) = 0X02;
+          *(++buff2) = EEPROM_Params.intelliThruDelayPeriod;
+          break;
+     */
+     
+     // Function 0E - Intellithru midi routing rules
+     // 03 Routing rules
+     /*
+     case 0x0E030000:
+          *(++buff2) = 0X03;
+          *(++buff2) = sourcePort;
+          *(++buff2) = EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].filterMsk;
+          c = 0;
+          for ( i=0; i != 16 ; i++) {
+     						if ( EEPROM_Params.midiRoutingRulesIntelliThru[sourcePort].jackOutTargetsMsk & ( 1 << i) ) {
+                      *(++buff2) = i;
+                      c++;
+                }
+     		  }
+          if (c == 0 ) return 0;
+          break;
+     */
 
      // Function 0F - USB/Serial Midi routing, filter & transformer rules
      // 03 Transformers
@@ -238,7 +282,7 @@ void SysexInternalDumpToStream(uint8_t dest)
   uint16_t l;
   const uint8_t dmCount = 12;
   uint32_t dumpMasks[dmCount] = {
-    0x0B000000, 0x0C000000, 
+    0x0B000000, 0x0C000000, /* 0x0E020000, 0x0E030000, // Intellithru */
     0x0F030000, 0x0F030001,
     0x0F030100, 0x0F030101,
     0x0F020000, 0x0F020100, 
@@ -362,6 +406,106 @@ void SysExInternalProcess(uint8_t source)
       break;
 
     // ---------------------------------------------------------------------------
+    // Function 0E - Intellithru midi routing rules
+    // ---------------------------------------------------------------------------
+    // IntelligentThru can be activated when USB is sleeping or unavailable beyond a certain timeout.
+    // F0 77 77 78 0E  < Routing rules command <command args>   >
+    //
+    // Commands are :
+    //  00 Reset Intellithru to default
+    //  01 Disable Intellithru
+    //  02 Set  Intellithru timeout
+    //      arg1 : 0xnn (number of 15s periods 1-127)
+    //  03 Set thru mode jack routing
+    //      arg1 - Midi In Jack = 0xnn (0-F)
+    //      arg2 - Midi filter mask (binary OR)
+    //                => zero if you want to inactivate intelliThru for this jack
+    //                  channel Voice = 0001 (1), (binary OR)
+    //                  system Common = 0010 (2), (binary OR)
+    //                  realTime      = 0100 (4), (binary OR)
+    //                  sysEx         = 1000 (8)
+    //      arg3 - Serial midi Jack out targets
+    //            <t1> <t2>...<tn>  0-F 16 targets maximum.
+    // EOX = F7
+    // Examples :
+    // F0 77 77 78 0E 00 F7                    <= Reset to default
+    // F0 77 77 78 0E 01 F7                    <= Disable
+    // F0 77 77 78 0E 02 02 F7                 <= Set timeout to 30s
+    // F0 77 77 78 0E 03 01 0F 00 01 02 03 F7  <= Route Midi In Jack 2 to Jacks out 1,2,3,4 All msg
+    // F0 77 77 78 0E 03 03 04 03 04 F7        <= Route Midi In Jack 4 to Jacks out 4,5, real time only
+
+    /*
+    case 0x0E:
+      if ( msgLen < 2 ) break;
+
+      // reset to default midi thru routing
+      if (sysExInternalBuffer[2] == 0x00  && msgLen == 2) {
+         ResetMidiRoutingRules(ROUTING_RESET_INTELLITHRU);
+      } else
+
+      // Disable thru mode
+      if (sysExInternalBuffer[2] == 0x01  && msgLen == 3) {
+          ResetMidiRoutingRules(ROUTING_INTELLITHRU_OFF);
+      } else
+
+      // Set Delay
+      // The min delay is 1 period of 15 secondes. The max is 127 periods of 15 secondes.
+      if (sysExInternalBuffer[2] == 0x02  && msgLen == 3) {
+        if ( sysExInternalBuffer[3] < 1 || sysExInternalBuffer[3] > 0X7F ) break;
+        EEPROM_Params.intelliThruDelayPeriod = sysExInternalBuffer[3];
+      } else
+
+      // Set routing : Midin 2 mapped to all events. All 4 ports.
+      // 0E 03 01 0F 00 01 02 03
+      // 0E 03 01 0F 00
+      if (sysExInternalBuffer[2] == 3 ) {
+          if (msgLen < 4 ) break;
+          if ( msgLen > SERIAL_INTERFACE_COUNT + 4 ) break;
+
+          uint8_t src = sysExInternalBuffer[3];
+          uint8_t filterMsk = sysExInternalBuffer[4];
+
+          if ( src >= SERIAL_INTERFACE_COUNT) break;
+
+          // Filter is 4 bits
+          if ( filterMsk > 0x0F  ) break;
+
+          
+          // Disable Thru mode for this jack if no filter
+          if ( filterMsk == 0 && msgLen ==4 ) {
+            EEPROM_Params.intelliThruJackInMsk &= ~(1 << src);
+          }
+          else {
+              if ( filterMsk == 0 ) break;
+              // Add midi in jack
+              EEPROM_Params.intelliThruJackInMsk |= (1 << src);
+              // Set filter
+              EEPROM_Params.midiRoutingRulesIntelliThru[src].filterMsk = filterMsk;
+              // Set Jacks
+              if ( msgLen > 4)  {
+                uint16_t msk = 0;
+                for ( uint8_t i = 5 ; i != (msgLen+1)  ; i++) {
+                    if ( sysExInternalBuffer[i] < SERIAL_INTERFACE_COUNT)
+                      msk |=  1 << sysExInternalBuffer[i] ;
+                }
+                EEPROM_Params.midiRoutingRulesIntelliThru[src].jackOutTargetsMsk = msk;
+              }
+          }
+          
+      }
+      else  break;
+
+      // Write the whole param struct
+      EEPROM_ParamsSave();
+      // reset globals for a real time update
+      intelliThruDelayMillis = EEPROM_Params.intelliThruDelayPeriod * 15000;
+      // Synchronize slaves routing rules if bus active and master
+      if (B_IS_MASTER) I2C_SlavesRoutingSyncFromMaster();
+
+      break;
+    */
+
+    // ---------------------------------------------------------------------------
     // Function 0F - USB/Serial Midi midi routing rules
     // ---------------------------------------------------------------------------
     // F0 77 77 78 0F  < Routing rules command <command args>   >
@@ -377,6 +521,7 @@ void SysExInternalProcess(uint8_t source)
     //      arg1 - source type : : <0x00 usb cable | 0x01 jack serial>
     //      arg2 - port id : id for cable or jack serial (0-F)
     //      arg3 - midi filter mask (binary OR)
+    //                => zero if you want to inactivate intelliThru for this jack
     //                  channel Voice = 0001 (1), (binary OR)
     //                  system Common = 0010 (2), (binary OR)
     //                  realTime      = 0100 (4), (binary OR)
@@ -451,7 +596,7 @@ void SysExInternalProcess(uint8_t source)
           } else
 
           if (srcType == 1) { // Serial
-              //if ( src >= SERIAL_INTERFACE_MAX) break;
+            if ( src >= SERIAL_INTERFACE_MAX) break;
               EEPROM_Params.midiRoutingRulesSerial[src].filterMsk = filterMsk;
           } else break;
 
@@ -468,12 +613,10 @@ void SysExInternalProcess(uint8_t source)
         uint8_t dstType = sysExInternalBuffer[5];
         uint8_t src = sysExInternalBuffer[4];
 
-        uint8_t SERIAL_INTERFACE_C_MAX = 15;
-
         if (srcType != 0 && srcType != 1 ) break;
         if (dstType != 0 && dstType != 1 ) break;
         if (srcType  == 0 && src >= USBCABLE_INTERFACE_MAX ) break;
-        if (srcType  == 1 && src >= SERIAL_INTERFACE_C_MAX ) break;
+        if (srcType  == 1 && src >= SERIAL_INTERFACE_MAX ) break;
         if (dstType  == 0 &&  msgLen > (USBCABLE_INTERFACE_MAX + 5) )  break;
         if (dstType  == 1 &&  msgLen > (SERIAL_INTERFACE_C_MAX + 5) )  break;
 
@@ -482,7 +625,7 @@ void SysExInternalProcess(uint8_t source)
         for ( uint8_t i = 6 ; i != (msgLen+1)  ; i++) {
             uint8_t b = sysExInternalBuffer[i];
             if ( (dstType == 0 && b < USBCABLE_INTERFACE_MAX) ||
-                 (dstType == 1 && b < SERIAL_INTERFACE_C_MAX) ) {
+                 (dstType == 1 && b < SERIAL_INTERFACE_MAX) ) {
 
                    msk |=   1 << b ;
             }
