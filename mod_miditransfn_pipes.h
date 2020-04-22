@@ -100,6 +100,22 @@ boolean MidiTransFn_VeloSplit_CheckParms(transPipe_t *);
 boolean MidiTransFn_VeloSplit(uint8_t, midiPacket_t *, transPipe_t *);
 
 ///////////////////////////////////////////////////////////////////////////////
+// Control-aligned branch
+///////////////////////////////////////////////////////////////////////////////
+
+boolean MidiTransFn_ClockDivider2_CheckParms(transPipe_t *);
+boolean MidiTransFn_ClockDivider2(uint8_t, midiPacket_t *, transPipe_t *);
+
+boolean MidiTransFn_SlotChain2_CheckParms(transPipe_t *);
+boolean MidiTransFn_SlotChain2(uint8_t, midiPacket_t *, transPipe_t *);
+
+boolean MidiTransFn_KbSplit2_CheckParms(transPipe_t *);
+boolean MidiTransFn_KbSplit2(uint8_t, midiPacket_t *, transPipe_t *);
+
+boolean MidiTransFn_VeloSplit2_CheckParms(transPipe_t *);
+boolean MidiTransFn_VeloSplit2(uint8_t, midiPacket_t *, transPipe_t *);
+
+///////////////////////////////////////////////////////////////////////////////
 //  Midi transformation functions vector
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -380,15 +396,16 @@ boolean MidiTransFn_CCChanger(uint8_t portType, midiPacket_t *pk, transPipe_t *p
 // -----------------------------------------------------------------------------------------------
 // | PipeID  |        par1        |        par2        |        par3        |         par4       |
 // |---------+--------------------+--------------------+--------------------+--------------------|
-// | CLKDIVD |     ratio:2-10     |     00 (unused)    |     00 (unused)    |     00 (unused)    |
-// |   05    |                    |                    |                    |                    |
+// | CLKDIVD |     set ratio:0    |     ratio 2-10     |     00 (unused)    |     00 (unused)    |
+// |   05-2  |                    |                    |                    |                    |
 // -----------------------------------------------------------------------------------------------
 // Example for a div 2 : 1---(2)---3---(4)---5---(6)---7---(8)
 // Example for a div 3 : 1---2---(3)---4---5---(6)---7---8---(9)
 // (x) means clock sent
 
 boolean MidiTransFn_ClockDivider_CheckParms(transPipe_t *pipe) {
-  if ( pipe->par1 < 2 || pipe->par1 >16 ) return false;
+  if ( pipe->par1 != 0 ) return false;
+  if ( pipe->par2 < 2 || pipe->par2 >16 ) return false; 
   return true;
 }
 
@@ -398,7 +415,7 @@ boolean MidiTransFn_ClockDivider(uint8_t portType, midiPacket_t *pk, transPipe_t
       return true;
 
   static uint8_t clockCounter = 0;
-  if ( ++clockCounter == pipe->par1 ) {
+  if ( ++clockCounter == pipe->par2 ) {
       clockCounter = 0;
       return true;
   }
@@ -456,28 +473,31 @@ boolean MidiTransFn_LoopBack(uint8_t portType, midiPacket_t *pk, transPipe_t *pi
 // -----------------------------------------------------------------------------------------------
 // | PipeID  |        par1        |        par2        |        par3        |         par4       |
 // |---------+--------------------+--------------------+--------------------+--------------------|
-// | SLOTCHN |     slot:1-8       |     00 (unused)    |     00 (unused)    |     00 (unused)    |
-// |   07    |                    |                    |                    |                    |
+// | SLOTCHN |     chain slot:0   |     slot:1-8       |     00 (unused)    |     00 (unused)    |
+// |   07-2  |                    |                    |                    |                    |
 // -----------------------------------------------------------------------------------------------
 
 boolean MidiTransFn_SlotChain_CheckParms(transPipe_t *pipe) {
-  if (pipe->par1 < 1 || pipe->par1 > TRANS_PIPELINE_SLOT_SIZE ) return false;
+  if (pipe->par1 != 0) return false;
+  if (pipe->par2 < 1 || pipe->par2 > TRANS_PIPELINE_SLOT_SIZE ) return false;
   return true;
 }
 
 boolean MidiTransFn_SlotChain(uint8_t portType, midiPacket_t *pk, transPipe_t *pipe) {
-  return TransPacketPipelineExec(portType, pipe->par1,  pk) ;
+
+  return TransPacketPipelineExec(portType, pipe->par2,  pk) ;
 }
 
 // -----------------------------------------------------------------------------------------------
-// | PipeID  |        par1        |        par2        |        par3        |         par4       |
+// | PipeID  |        par1            |        par2    |        par3        |         par4       |
+// |---------+------------------------+----------------+--------------------+--------------------|
+// | KBSPLIT |  0:split transp up     | note: 0-7F     |    midi ch:0-F     |     semitone:0-7F  |
+// |   08-2  |  1:split transp dn     | note: 0-7F     |    midi ch:0-F     |     semitone:0-7F  |
+// |         |  2:split nochg         | note: 0-7F     |    midi ch:0-F     |     00 (unused)    |
 // |---------+--------------------+--------------------+--------------------+--------------------|
-// | KBSPLIT |  split note: 0-7F  |     midi ch:0-F    |     no change:0    |     00 (unused)    |
-// |   08    |                    |                    |    transpose+:1    |   semitone:00-7F   |
-// |         |                    |                    |    transpose-:2    |   semitone:00-7F   |
-// -----------------------------------------------------------------------------------------------
+
 boolean MidiTransFn_KbSplit_CheckParms(transPipe_t *pipe) {
-  if (pipe->par2 > 0x0F || pipe->par3 > 2) return false;
+  if (pipe->par1 > 2 || pipe->par2 > 0x7F || pipe->par3 > 0xF || pipe->par4 > 0x7F) return false;
   return true;
 }
 
@@ -488,26 +508,26 @@ boolean MidiTransFn_KbSplit(uint8_t portType, midiPacket_t *pk, transPipe_t *pip
   if ( midiStatus != midiXparser::noteOnStatus && midiStatus != midiXparser::noteOffStatus)
       return true;
 
-  if ( pk->packet[2] >= pipe->par1  ) {
-    pk->packet[1] = midiStatus + pipe->par2; // Channel
-    if ( pipe->par3 == 1 || pipe->par3 == 2  ) {
-      // Transpose+
-      transPipe_t p =  { FN_TRANSPIPE_NOTE_CHANGER,0, (uint8_t)(pipe->par3 - 1),pipe->par4,0,0 };
+  if ( pk->packet[2] >= pipe->par2  ) {    
+    pk->packet[1] = midiStatus + pipe->par3;     // Set channel
+    if ( pipe->par1 == 0 || pipe->par1 == 1  ) { // Transpose +/-
+      transPipe_t p =  { FN_TRANSPIPE_NOTE_CHANGER, 0, pipe->par1, pipe->par4, 0, 0 };
       return MidiTransFn_NoteChanger(portType, pk, &p);
     }
   }
   return true;
 }
+
 // -----------------------------------------------------------------------------------------------
 // | PipeID  |        par1        |        par2        |        par3        |         par4       |
 // |---------+--------------------+--------------------+--------------------+--------------------|
-// | VLSPLIT | split veloc.: 0-7F |     midi ch:0-F    |       nochg:0      |     00 (unused)    |
-// |   09    |                    |                    |       fixed:1      |     value:0-7F     |
-// |         |                    |                    |         add:2      |     value:0-7F     |
-// |         |                    |                    |         sub:3      |     value:0-7F     |
-// -----------------------------------------------------------------------------------------------
+// | VLSPLIT |  0:split nochg     | midi ch:0-F        |   vel: 0-7F        |     00 (unused)    |
+// |   09    |  1:split fixed     | midi ch:0-F        |   vel: 0-7F        |     value: 0-7F    |
+// |         |  2:split add       | midi ch:0-F        |   vel: 0-7F        |     value: 0-7F    |
+// |         |  3:split subt      | midi ch:0-F        |   vel: 0-7F        |     value: 0-7F    |
+// |---------+--------------------+--------------------+--------------------+--------------------|
 boolean MidiTransFn_VeloSplit_CheckParms(transPipe_t *pipe) {
-  if (pipe->par2 > 0x0F || pipe->par3 > 3) return false;
+  if (pipe->par1 > 3 || pipe->par2 > 0xF || pipe->par3 > 0x7F || pipe->par4 > 0x7F) return false;
   return true;
 }
 
@@ -518,21 +538,22 @@ boolean MidiTransFn_VeloSplit(uint8_t portType, midiPacket_t *pk, transPipe_t *p
   if ( midiStatus != midiXparser::noteOnStatus&& midiStatus != midiXparser::noteOffStatus)
         return true;
 
-  // Send a note off to the dest channel to ensure note stop  in all case
+  // Send a note off to the dest channel to ensure note stop in all case
   // as no history of note on exists.
   if ( midiStatus == midiXparser::noteOffStatus ) {
       // Current packet copy
       midiPacket_t pk2 = { .i = pk->i };
-      pk2.packet[1] = midiStatus + pipe->par2; // Change Channel
+      pk2.packet[1] = midiStatus + pipe->par2; // Change Channel - NoteOff
       RoutePacketToTarget(portType, &pk2);
   }
   else
   // Note On
-  if ( pk->packet[3] >= pipe->par1  ) {
-    pk->packet[1] = midiStatus + pipe->par2; // Channel
-    if ( pipe->par3 == 1 ) pk->packet[3] = pipe->par4; // Fixed
-    else if ( pipe->par3 == 2 ) { CONSTRAINT_ADD(pk->packet[3],pipe->par4,127); }
-    else if ( pipe->par3 == 3 ) { CONSTRAINT_SUB(pk->packet[3],pipe->par4,0); }
+  if ( pk->packet[3] >= pipe->par3  ) {
+    pk->packet[1] = midiStatus + pipe->par2; // Change Channel - NoteOn
+    if ( pipe->par1 == 1 ) pk->packet[3] = pipe->par4; // Fixed
+    else if ( pipe->par1 == 2 ) { CONSTRAINT_ADD(pk->packet[3], pipe->par4, 127); }
+    else if ( pipe->par1 == 3 ) { CONSTRAINT_SUB(pk->packet[3], pipe->par4,   0); }
   }
   return true;
 }
+
