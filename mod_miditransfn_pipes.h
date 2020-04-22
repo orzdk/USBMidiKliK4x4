@@ -99,21 +99,6 @@ boolean MidiTransFn_KbSplit(uint8_t, midiPacket_t *, transPipe_t *);
 boolean MidiTransFn_VeloSplit_CheckParms(transPipe_t *);
 boolean MidiTransFn_VeloSplit(uint8_t, midiPacket_t *, transPipe_t *);
 
-///////////////////////////////////////////////////////////////////////////////
-// Control-aligned branch
-///////////////////////////////////////////////////////////////////////////////
-
-boolean MidiTransFn_ClockDivider2_CheckParms(transPipe_t *);
-boolean MidiTransFn_ClockDivider2(uint8_t, midiPacket_t *, transPipe_t *);
-
-boolean MidiTransFn_SlotChain2_CheckParms(transPipe_t *);
-boolean MidiTransFn_SlotChain2(uint8_t, midiPacket_t *, transPipe_t *);
-
-boolean MidiTransFn_KbSplit2_CheckParms(transPipe_t *);
-boolean MidiTransFn_KbSplit2(uint8_t, midiPacket_t *, transPipe_t *);
-
-boolean MidiTransFn_VeloSplit2_CheckParms(transPipe_t *);
-boolean MidiTransFn_VeloSplit2(uint8_t, midiPacket_t *, transPipe_t *);
 
 ///////////////////////////////////////////////////////////////////////////////
 //  Midi transformation functions vector
